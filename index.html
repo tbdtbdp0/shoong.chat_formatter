@@ -418,7 +418,7 @@ body.ui-mobile #btnViewMode{padding:0 8px}
 .favatar{width:2.5em;height:2.5em;border-radius:99px;display:block;flex:0 0 auto}
 .fbar.chat .fmeta{flex:1;min-width:0;display:flex;flex-direction:column;gap:.15em}
 .fbar.chat .ftitle{font-weight:700;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1.25}
-.fbar.chat .fstat{font-size:.78em;opacity:.65;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.fbar.chat .fstat{font-size:.78em;opacity:.65;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1.5;padding-bottom:.05em}
 .finput{flex:0 0 auto;display:flex;align-items:center;gap:.6em;padding:.9em .8em 1.05em;font-size:.74em}
 .finput .fplus{flex:0 0 auto;font-size:1.5em;line-height:.8;opacity:.55}
 .finput .fbox{flex:1;padding:.85em 1.1em;border-radius:99px;line-height:1.2}
@@ -923,11 +923,19 @@ body.ui-mobile .blk textarea{font-size:16px}
             <div class="field"><label>가로 픽셀</label><input type="number" id="expW" value="1080" min="200" max="4000" step="20"></div>
             <div class="field"><label>파일 이름</label><input type="text" id="expName" value="발췌"></div>
           </div>
-          <div class="field"><label>여러 장일 때 저장 방식</label>
-            <select id="expMode">
-              <option value="png">장마다 PNG 파일 하나씩</option>
-              <option value="pdf">한 파일로 묶기 (PDF · 장 수만큼 페이지)</option>
-            </select>
+          <div class="grid2">
+            <div class="field"><label>저장할 장</label>
+              <select id="expPages">
+                <option value="all">모든 장</option>
+                <option value="current">지금 보는 장만</option>
+              </select>
+            </div>
+            <div class="field"><label>여러 장일 때 방식</label>
+              <select id="expMode">
+                <option value="png">장마다 PNG 하나씩</option>
+                <option value="pdf">한 파일로 묶기 (PDF)</option>
+              </select>
+            </div>
           </div>
           <p class="hint">여러 장을 PNG로 내려받으면 브라우저가 <b>반복적으로 다운 허용 여부</b>를 묻습니다. 이건 브라우저의 보안 확인이라 해당 사이트 문제가 아니며, 모든 질문에 허용을 체크하시면 정상 다운로드 됩니다. 아예 안 뜨게 하려면 <b>한 파일로 묶기</b>를 쓰세요. 장을 합치지 않고 페이지만 나눠 담습니다. <b>단, PDF는 배경 투명화 불가.</b></p>
           <p class="hint">비율을 고정하면 넘치는 내용은 여러 장으로 나눠 저장됩니다. 미리보기에 나뉜 장수가 그대로 보이고, 대사 탭의 블록마다 몇 쪽인지 표시됩니다. 배경을 투명으로 두면 배경이 비어 있는 PNG로 저장됩니다.</p>
@@ -1139,7 +1147,7 @@ const DEFAULT_STATE = () => ({
   bgFit: 'cover', tint: 0,
   font: "'Pretendard',sans-serif", fontSize: 16, lineHeight: 1.65, letterSpace: 0, pgap: 42, indent: 0,
   padX: 30, padY: 30, gap: 15, bubbleRadius: 18, canvasRadius: 14,
-  exportW: 1080, exportName: '발췌', exportMode: 'png',
+  exportW: 1080, exportName: '발췌', exportMode: 'png', exportPages: 'all',
   speakers: [
     {id:'s1', name:'화자1', align:'left', avatar:null, ...AUTO_COLORS[1]},
     {id:'s2', name:'화자2', align:'right', avatar:null, ...AUTO_COLORS[0]}
@@ -1443,8 +1451,11 @@ function buildRow(bk){
   const bodyHtml = (state.mode === 'mixed' ? groupHtml(bk.text, colors, sp, 'bubble', nameInBox)
       : state.mode === 'quote' ? groupHtml(bk.text, colors, sp, 'quote')
       : nameInBox + paragraphsHtml(bk.text, colors, inlineName)) + imgHtml;
+  const avSize = ((Number(sp.avatarSize) || 100) / 100 * 2.3).toFixed(2);
+  const AV_R = {circle:'99px', round:'.45em', soft:'.9em', square:'0'};
   const avatar = sp.avatar
-    ? '<div class="cav" style="background-image:url(' + escAttr(sp.avatar) + ')"></div>'
+    ? '<div class="cav" style="background-image:url(' + escAttr(sp.avatar) +
+      ');width:' + avSize + 'em;height:' + avSize + 'em;border-radius:' + (AV_R[sp.avatarShape] || '99px') + '"></div>'
     : '<div class="cav" style="background:' + hexToRgba(sp.bubble, .9) + ';color:' + sp.text + '">' + escHtml((sp.name || '?').slice(0,1)) + '</div>';
 
   /* 대사창 모양에서는 화자 이름이 말풍선 밖이 아니라 안에 들어간다 */
@@ -2064,9 +2075,11 @@ function applyZoom(){
   box.style.height = Math.round(stack.offsetHeight * zoom) + 'px';
   $('#zVal').textContent = Math.round(zoom * 100) + '%';
 }
-/* 이미지가 늦게 로드되어 높이가 변하면 상자 크기를 따라잡는다 */
+/* 이미지가 늦게 로드되어 높이가 변하면 상자 크기를 따라잡는다.
+   단, 캡처 중에는 절대 배율을 다시 걸면 안 된다 — 걸면 저장 이미지의 글자가 겹쳐 깨진다. */
+let capturing = false;
 if (typeof ResizeObserver !== 'undefined'){
-  new ResizeObserver(() => applyZoom()).observe($('#pageStack'));
+  new ResizeObserver(() => { if (!capturing) applyZoom(); }).observe($('#pageStack'));
 }
 function fitZoom(){
   const scroll = $('#stageScroll');
@@ -2131,7 +2144,16 @@ function renderCast(){
         '<div class="cc"><input type="color" value="' + sp.action + '" data-c="action" data-id="' + sp.id + '"><span>지문</span></div>' +
         '<div class="cc"><input type="color" value="' + (sp.nameColor || sp.text) + '" data-c="nameColor" data-id="' + sp.id + '"><span>이름</span></div>' +
       '</div>' +
-      '<label class="check" style="margin:9px 0 0"><input type="checkbox" data-nob="' + sp.id + '"' + (sp.noBubble ? ' checked' : '') + '> 말풍선 배경 없애기 (투명)</label>';
+      '<label class="check" style="margin:9px 0 0"><input type="checkbox" data-nob="' + sp.id + '"' + (sp.noBubble ? ' checked' : '') + '> 말풍선 배경 없애기 (투명)</label>' +
+      '<div class="grid2" style="margin-top:9px">' +
+        '<div class="field" style="margin:0"><label>프로필 모양</label>' +
+          '<select data-avsh="' + sp.id + '">' +
+            [['circle','원형'],['round','둥근 사각'],['soft','많이 둥근'],['square','사각']]
+              .map(([vv, ll]) => '<option value="' + vv + '"' + ((sp.avatarShape || 'circle') === vv ? ' selected' : '') + '>' + ll + '</option>').join('') +
+          '</select></div>' +
+        '<div class="field" style="margin:0"><label>프로필 크기</label>' +
+          '<div class="rangerow" style="margin:0"><input type="range" min="60" max="180" value="' + (sp.avatarSize || 100) + '" data-avsz="' + sp.id + '"><output>' + (sp.avatarSize || 100) + '%</output></div></div>' +
+      '</div>';
     list.appendChild(card);
   });
   upgradeRangeRows(list);
@@ -2395,6 +2417,7 @@ function syncControls(){
   $('#radRange').value = state.canvasRadius; $('#radOut').value = state.canvasRadius + 'px';
   $('#expW').value = state.exportW; $('#expName').value = state.exportName;
   $('#expMode').value = state.exportMode || 'png';
+  $('#expPages').value = state.exportPages || 'all';
   renderThemes();
 }
 function renderAll(){ syncControls(); renderCast(); renderBlocks(); renderCanvas(); }
@@ -2408,6 +2431,15 @@ $$('.tab').forEach(t => t.addEventListener('click', () => {
 /* ---------------- panel events (delegated) ---------------- */
 $('#castList').addEventListener('input', e => {
   const el = e.target;
+  if (el.dataset.avsz){
+    const sp = speakerOf(el.dataset.avsz);
+    if (sp){
+      sp.avatarSize = Number(el.value);
+      const o = el.closest('.rangerow').querySelector('.numin, output'); if (o) o.value = el.value + '%';
+      renderCanvas();
+    }
+    return;
+  }
   if (el.dataset.nrc){ state.narrator[el.dataset.nrc] = el.value; renderCanvas(); return; }
   if (el.dataset.nr === 'size'){
     state.narrator.size = Number(el.value);
@@ -2425,6 +2457,11 @@ $('#castList').addEventListener('change', e => {
   if (el.dataset.nob){
     const sp = speakerOf(el.dataset.nob);
     if (sp){ snapshot(); sp.noBubble = el.checked; renderCanvas(); }
+    return;
+  }
+  if (el.dataset.avsh){
+    const sp = speakerOf(el.dataset.avsh);
+    if (sp){ snapshot(); sp.avatarShape = el.value; renderCanvas(); }
     return;
   }
   if (el.dataset.align){ const s = speakerOf(el.dataset.align); if (s){ snapshot(); s.align = el.value; renderCanvas(); } }
@@ -3052,6 +3089,7 @@ bindRange('#radRange', '#radOut', v => state.canvasRadius = v, v => v + 'px');
 $('#expW').addEventListener('input', e => { state.exportW = clamp(Number(e.target.value) || 1080, 200, 4000); renderCanvas(); });
 $('#expName').addEventListener('input', e => { state.exportName = e.target.value; });
 $('#expMode').addEventListener('change', e => { state.exportMode = e.target.value; });
+$('#expPages').addEventListener('change', e => { state.exportPages = e.target.value; });
 
 /* ---------------- 편집 화면 배치 ---------------- */
 let uiMode = 'desktop';
@@ -3241,7 +3279,7 @@ function migrate(o){
 const STYLE_KEYS = ['mode','theme','textAlign','hideNames','alignedText','wrapQuote','nameSep','quoteOrn','markColor','marks','actionMode',
   'ratio','ratioW','ratioH','pageNo','pageNoPos','pageNoColor','bgKind','bgColor','bgColor2','bgImage','bgFit','tint','frame','frameColor','frameTitle','frameHtml','frameOnTop','frameEls','frameChoiceText','frameAsk','frameVar','frameText','frameImg',
   'font','fontSize','lineHeight','letterSpace','pgap','indent','padX','padY','gap','narrator',
-  'bubbleWidth','bubblePad','bubbleShape','bubbleShadow','bubbleRadius','canvasRadius','exportW','exportMode'];
+  'bubbleWidth','bubblePad','bubbleShape','bubbleShadow','bubbleRadius','canvasRadius','exportW','exportMode','exportPages'];
 
 function makePreset(){
   const style = {};
@@ -3313,6 +3351,7 @@ $('#fileJson').addEventListener('change', e => {
 
 /* ---------------- export ---------------- */
 async function capturePages(){
+  capturing = true;
   const stack = $('#pageStack');
   const sc = $('#stageScroll');
   const prevT = stack.style.transform;
@@ -3325,13 +3364,20 @@ async function capturePages(){
   const scale = (Number(state.exportW) || 1080) / CANVAS_W;
   const pages = Array.from(stack.querySelectorAll('.page'));
   const shots = [];
-  for (const p of pages){
-    const canvas = await html2canvas(p, {scale, useCORS:true, backgroundColor:null, logging:false});
-    shots.push(canvas);
+  try {
+    const want = capturePages.only;
+    for (let i = 0; i < pages.length; i++){
+      if (want != null && i !== want) continue;
+      shots.push(await html2canvas(pages[i], {scale, useCORS:true, backgroundColor:null, logging:false}));
+    }
+  } finally {
+    capturePages.only = null;
+    stack.style.transform = prevT;
+    Array.from(stack.children).forEach((w, i) => { w.style.display = hidden[i] || 'flex'; });
+    sc.scrollTop = keepTop; sc.scrollLeft = keepLeft;
+    capturing = false;
+    applyZoom();
   }
-  stack.style.transform = prevT;
-  Array.from(stack.children).forEach((w, i) => { w.style.display = hidden[i] || 'flex'; });
-  sc.scrollTop = keepTop; sc.scrollLeft = keepLeft;
   return shots;
 }
 /* 여러 장을 한 번에 내려받을 때는 브라우저가 뒤엣것을 막는다.
@@ -3420,12 +3466,32 @@ function downloadCanvas(canvas, name){
     }, 'image/png');
   });
 }
+function currentVisiblePage(){
+  if (viewMode === 'paged') return curPage;
+  const sc = $('#stageScroll');
+  const wraps = Array.from($('#pageStack').children);
+  if (wraps.length < 2) return 0;
+  const mark = sc.getBoundingClientRect().top + sc.clientHeight * .38;
+  let pg = 0;
+  wraps.forEach((w, i) => { if (w.getBoundingClientRect().top <= mark) pg = i; });
+  return pg;
+}
 $('#btnExport').addEventListener('click', async () => {
   const btn = $('#btnExport');
   btn.disabled = true; btn.textContent = '저장 중…';
   try {
+    const onlyCurrent = (state.exportPages || 'all') === 'current';
+    const cur = onlyCurrent ? currentVisiblePage() : null;
+    if (onlyCurrent) capturePages.only = cur;
     const shots = await capturePages();
     const base = state.exportName || '발췌';
+    if (onlyCurrent){
+      const name = base + '_' + String(cur + 1).padStart(2, '0') + '.png';
+      if (await downloadCanvas(shots[0], name)) toast((cur + 1) + '쪽을 저장했습니다');
+      else toast('저장이 막혔습니다 · 브라우저 설정을 확인해 주세요');
+      btn.disabled = false; btn.textContent = '이미지 저장';
+      return;
+    }
     if (shots.length > 1 && (state.exportMode || 'png') === 'pdf'){
       btn.textContent = '한 파일로 묶는 중…';
       const pdf = await buildPdf(shots);
