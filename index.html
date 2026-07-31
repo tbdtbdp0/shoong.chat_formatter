@@ -1243,14 +1243,25 @@ function nodeText(n){
   if (n.type === 'quote' && n.raw) return n.raw;
   return (n.kids || []).map(nodeText).join('');
 }
-function nodesToHtml(nodes, c){
+/* 형광 배경은 글자 하나짜리 조각으로 쪼개 칠한다.
+   여러 줄에 걸친 인라인 요소의 배경을 html2canvas가 줄별로 못 그리고
+   전체를 덮는 한 장의 사각형으로 그려, 주변 글자까지 형광색으로 덮어 버리기 때문.
+   글자마다 따로 칠하면 어떤 조각도 줄을 넘지 않아 저장 결과가 미리보기와 같다. */
+function markChars(text, bg){
+  return Array.from(String(text)).map(ch =>
+    ch === '\n' ? escHtml(ch)
+      : '<span style="background:' + bg + '">' + escHtml(ch) + '</span>'
+  ).join('');
+}
+function nodesToHtml(nodes, c, markBg){
   return nodes.map(n => {
-    if (n.type === 'text') return escHtml(n.text);
-    const inner = nodesToHtml(n.kids || [], c);
+    if (n.type === 'text') return markBg ? markChars(n.text, markBg) : escHtml(n.text);
+    const bg = n.type === 'mark' ? (n.color || c.mark) : markBg;
+    const inner = nodesToHtml(n.kids || [], c, bg);
     switch (n.type){
       case 'bold':   return '<strong>' + inner + '</strong>';
       case 'italic': return '<em>' + inner + '</em>';
-      case 'mark':   return '<mark style="background:' + (n.color || c.mark) + ';color:inherit;padding:0 .15em;border-radius:.15em">' + inner + '</mark>';
+      case 'mark':   return '<mark style="background:none;color:inherit">' + inner + '</mark>';
       case 'action': return '<span class="act" style="color:' + c.action + '">' + inner + '</span>';
       case 'quote':  return '<span class="dlg">' + (n.raw ? escHtml(n.raw[0]) : '"') + inner + (n.raw ? escHtml(n.raw[n.raw.length-1]) : '"') + '</span>';
       default:       return inner;
