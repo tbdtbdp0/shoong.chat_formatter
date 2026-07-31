@@ -197,9 +197,9 @@ input[type=range]{width:100%;accent-color:var(--accent-line);height:18px}
 /* ---------- stage ---------- */
 .stage{background:var(--mat);display:grid;grid-template-rows:1fr 46px;min-height:0;position:relative}
 .stage::before{content:'';position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 0%,var(--mat2) 0%,var(--mat) 62%);pointer-events:none}
-.stage-scroll{overflow:auto;padding:34px 24px 40px;display:flex;justify-content:center;position:relative;
+.stage-scroll{overflow:auto;padding:34px 24px 40px;display:block;position:relative;
   touch-action:pan-x pan-y;overscroll-behavior:contain}
-.page-stack{display:flex;flex-direction:column;align-items:center;gap:34px;transform-origin:top center;height:max-content}
+.page-stack{display:flex;flex-direction:column;align-items:center;gap:34px;width:max-content;margin:0 auto}
 .page-wrap{display:flex;flex-direction:column;align-items:center}
 .pagebox{position:relative;display:flex}
 .checker{position:absolute;inset:0;z-index:0;background-color:#fff;
@@ -223,9 +223,7 @@ input[type=range]{width:100%;accent-color:var(--accent-line);height:18px}
 .zbtn:disabled{opacity:.35;cursor:default;background:none}
 .zval{font-size:11.5px;color:var(--mat-ink);width:40px;flex:0 0 auto;text-align:center;font-variant-numeric:tabular-nums}
 .warn{font-size:11.5px;color:#E0B48C}
-.zslider{width:84px;height:18px;flex:0 0 auto;accent-color:var(--accent);background:none;border:none;padding:0;cursor:ew-resize}
 .pagenav{display:flex;align-items:center;gap:2px;margin-right:4px;padding-right:7px;border-right:1px solid var(--mat-line);flex:0 0 auto}
-body.ui-mobile .zslider{display:none}
 body.ui-mobile .stage-bar .grp{gap:4px}
 body.ui-mobile #btnViewMode{padding:0 8px}
 
@@ -949,7 +947,6 @@ body.ui-mobile .blk textarea{font-size:16px}
           </span>
           <button class="btn sm ghost" id="btnViewMode">넘김 보기</button>
           <button class="zbtn" id="zOut" title="축소">−</button>
-          <input type="range" class="zslider" id="zRange" min="15" max="200" value="100" title="끌어서 확대 비율 조절">
           <span class="zval" id="zVal">100%</span>
           <button class="zbtn" id="zIn" title="확대">+</button>
           <button class="btn sm ghost" id="zFit">맞춤</button>
@@ -2054,17 +2051,13 @@ function paintPageMarkers(pageOf, total){
 
 /* ---------------- zoom ---------------- */
 function applyZoom(){
-  const stack = $('#pageStack');
-  stack.style.marginBottom = '0px';
-  stack.style.transform = 'scale(' + zoom + ')';
-  stack.style.marginBottom = (zoom < 1 ? -Math.round(stack.offsetHeight * (1 - zoom)) : 0) + 'px';
+  $('#pageStack').style.zoom = zoom;
   $('#zVal').textContent = Math.round(zoom * 100) + '%';
-  syncZoomUI();
 }
 function fitZoom(){
   const scroll = $('#stageScroll');
   const stack = $('#pageStack');
-  stack.style.transform = 'none';
+  stack.style.zoom = '1';
   const pw = stack.offsetWidth || CANVAS_W;
   const ph = stack.offsetHeight || 1;
   const availW = scroll.clientWidth - 48;
@@ -2074,10 +2067,6 @@ function fitZoom(){
   applyZoom();
 }
 function snapZoom(z){ return Math.max(.15, Math.round(CANVAS_W * clamp(z, .15, 2)) / CANVAS_W); }
-function syncZoomUI(){
-  const r = $('#zRange');
-  if (r) r.value = Math.round(zoom * 100);
-}
 function setZoom(z){ zoom = snapZoom(z); zoomAuto = false; applyZoom(); }
 
 /* ---------------- panel: speakers ---------------- */
@@ -3024,7 +3013,6 @@ $('#btnUiMode').addEventListener('click', () => setUiMode(uiMode === 'mobile' ? 
 $('#zIn').addEventListener('click', () => setZoom(zoom * 1.15));
 $('#zOut').addEventListener('click', () => setZoom(zoom / 1.15));
 $('#zFit').addEventListener('click', fitZoom);
-$('#zRange').addEventListener('input', e => setZoom(Number(e.target.value) / 100));
 window.addEventListener('resize', () => { if (zoomAuto) fitZoom(); });
 
 /* 두 손가락 확대 — 미리보기 영역만 커진다 */
@@ -3268,11 +3256,11 @@ $('#fileJson').addEventListener('change', e => {
 async function capturePages(){
   const stack = $('#pageStack');
   const sc = $('#stageScroll');
-  const prev = stack.style.transform;
+  const prevZoom = stack.style.zoom;
   const keepTop = sc.scrollTop, keepLeft = sc.scrollLeft;
   const hidden = Array.from(stack.children).map(w => w.style.display);
   Array.from(stack.children).forEach(w => { w.style.display = 'flex'; });
-  stack.style.transform = 'none';
+  stack.style.zoom = '1';
   sc.scrollTop = 0; sc.scrollLeft = 0;
   if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch(e){} }
   const scale = (Number(state.exportW) || 1080) / CANVAS_W;
@@ -3282,7 +3270,7 @@ async function capturePages(){
     const canvas = await html2canvas(p, {scale, useCORS:true, backgroundColor:null, logging:false});
     shots.push(canvas);
   }
-  stack.style.transform = prev;
+  stack.style.zoom = prevZoom;
   Array.from(stack.children).forEach((w, i) => { w.style.display = hidden[i] || 'flex'; });
   sc.scrollTop = keepTop; sc.scrollLeft = keepLeft;
   return shots;
