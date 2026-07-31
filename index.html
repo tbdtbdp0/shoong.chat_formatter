@@ -199,7 +199,8 @@ input[type=range]{width:100%;accent-color:var(--accent-line);height:18px}
 .stage::before{content:'';position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 0%,var(--mat2) 0%,var(--mat) 62%);pointer-events:none}
 .stage-scroll{overflow:auto;padding:34px 24px 40px;display:block;position:relative;
   touch-action:pan-x pan-y;overscroll-behavior:contain}
-.page-stack{display:flex;flex-direction:column;align-items:center;gap:34px;width:max-content;margin:0 auto}
+#zoomBox{margin:0 auto;position:relative;overflow:visible}
+.page-stack{display:flex;flex-direction:column;align-items:center;gap:34px;width:max-content;transform-origin:top left}
 .page-wrap{display:flex;flex-direction:column;align-items:center}
 .pagebox{position:relative;display:flex}
 .checker{position:absolute;inset:0;z-index:0;background-color:#fff;
@@ -560,6 +561,10 @@ body.ui-mobile #btnViewMode{padding:0 8px}
 .tunerow b{flex:0 0 auto;font-size:12.5px;font-weight:600}
 .tunerow .tuneval{flex:1;text-align:right;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .tunerow .tunesw{flex:0 0 auto;width:16px;height:16px;border-radius:5px;border:1px solid var(--line);display:block}
+.addmenu{position:fixed;z-index:220;display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 10px 28px rgba(20,40,60,.18);padding:5px;min-width:150px}
+.addmenu button{border:none;background:none;text-align:left;padding:8px 11px;border-radius:7px;font-size:12.5px;color:var(--ink2);cursor:pointer}
+.addmenu button:hover{background:var(--accent-soft);color:var(--accent-text)}
 .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,14px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:.22s;z-index:80;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 body.ui-mobile .main{grid-template-columns:1fr;grid-template-rows:var(--stage-h) 7px minmax(0,1fr)}
@@ -935,7 +940,7 @@ body.ui-mobile .blk textarea{font-size:16px}
 
     <section class="stage">
       <div class="stage-scroll" id="stageScroll">
-        <div class="page-stack" id="pageStack"></div>
+        <div id="zoomBox"><div class="page-stack" id="pageStack"></div></div>
       </div>
       <div class="stage-bar">
         <div class="grp"><span class="lb" id="sizeLabel">—</span><span class="warn" id="pageWarn"></span></div>
@@ -2051,13 +2056,21 @@ function paintPageMarkers(pageOf, total){
 
 /* ---------------- zoom ---------------- */
 function applyZoom(){
-  $('#pageStack').style.zoom = zoom;
+  const stack = $('#pageStack');
+  /* transform은 겉모습만 균일하게 키우므로, 실제 차지 크기는 상자에 따로 적어 스크롤이 맞게 한다 */
+  stack.style.transform = 'scale(' + zoom + ')';
+  const box = $('#zoomBox');
+  box.style.width = Math.round(stack.offsetWidth * zoom) + 'px';
+  box.style.height = Math.round(stack.offsetHeight * zoom) + 'px';
   $('#zVal').textContent = Math.round(zoom * 100) + '%';
+}
+/* 이미지가 늦게 로드되어 높이가 변하면 상자 크기를 따라잡는다 */
+if (typeof ResizeObserver !== 'undefined'){
+  new ResizeObserver(() => applyZoom()).observe($('#pageStack'));
 }
 function fitZoom(){
   const scroll = $('#stageScroll');
   const stack = $('#pageStack');
-  stack.style.zoom = '1';
   const pw = stack.offsetWidth || CANVAS_W;
   const ph = stack.offsetHeight || 1;
   const availW = scroll.clientWidth - 48;
@@ -2162,6 +2175,7 @@ function renderBlocks(){
           '<span class="grip" title="끌어서 순서 바꾸기">⠿</span>' +
           '<span class="pgno"></span>' +
           '<span class="pbl">여기서 페이지 나누기</span>' +
+          '<button class="mini" data-addafter="' + bk.id + '" data-tip="바로 아래에 대사·구분선·페이지 나누기를 추가합니다">＋</button>' +
           '<button class="mini danger" data-del="' + bk.id + '" title="삭제">✕</button>' +
         '</div>';
       list.appendChild(el);
@@ -2176,6 +2190,7 @@ function renderBlocks(){
           '<span class="pgno"></span>' +
           '<span class="dot" style="background:' + b.color + '"></span>' +
           '<span style="flex:1;font-size:12.5px;color:var(--muted)">구분선</span>' +
+          '<button class="mini" data-addafter="' + b.id + '" data-tip="바로 아래에 대사·구분선·페이지 나누기를 추가합니다">＋</button>' +
           '<button class="mini" data-dup="' + b.id + '" title="복제">⧉</button>' +
           '<button class="mini danger" data-del="' + b.id + '" title="삭제">✕</button>' +
         '</div>' +
@@ -2205,6 +2220,7 @@ function renderBlocks(){
           '<span class="pgno"></span>' +
           '<span class="dot" style="background:' + (sp ? sp.bubble : '#E7E2ED') + '"></span>' +
           '<select data-sp="' + bk.id + '">' + opts + '</select>' +
+          '<button class="mini" data-addafter="' + bk.id + '" data-tip="바로 아래에 대사·구분선·페이지 나누기를 추가합니다">＋</button>' +
           '<button class="mini" data-dup="' + bk.id + '" title="복제">⧉</button>' +
           '<button class="mini danger" data-del="' + bk.id + '" title="삭제">✕</button>' +
         '</div>' +
@@ -2518,6 +2534,47 @@ $('#blockList').addEventListener('change', e => {
     });
   }
 });
+/* 블록 바로 뒤에 새 블록 끼워 넣기 */
+let addMenuEl = null;
+function closeAddMenu(){ if (addMenuEl){ addMenuEl.remove(); addMenuEl = null; } }
+function insertAfter(id, type){
+  const i = state.blocks.findIndex(x => x.id === id);
+  if (i < 0) return;
+  snapshot();
+  const src = state.blocks[i];
+  const nb = type === 'line'
+    ? {id:uid(), type:'line', sp:(src.type === 'line' ? src.sp : null) || null, text:''}
+    : type === 'rule' ? {id:uid(), type:'rule'} : {id:uid(), type:'pb'};
+  state.blocks.splice(i + 1, 0, nb);
+  renderBlocks(); renderCanvas();
+  if (type === 'line'){
+    const ta = $('[data-tx="' + nb.id + '"]');
+    if (ta){ ta.focus(); ta.scrollIntoView({block:'center', behavior:'smooth'}); }
+  }
+}
+function openAddMenu(btn, id){
+  closeAddMenu();
+  const m = document.createElement('div');
+  m.className = 'addmenu';
+  m.innerHTML =
+    '<button data-am="line">＋ 대사</button>' +
+    '<button data-am="rule">＋ 구분선</button>' +
+    '<button data-am="pb">＋ 페이지 나누기</button>';
+  document.body.appendChild(m);
+  const r = btn.getBoundingClientRect();
+  const mr = m.getBoundingClientRect();
+  m.style.left = Math.round(clamp(r.right - mr.width, 8, window.innerWidth - mr.width - 8)) + 'px';
+  m.style.top = Math.round(r.bottom + 5 + mr.height > window.innerHeight - 8 ? r.top - mr.height - 5 : r.bottom + 5) + 'px';
+  m.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-am]');
+    if (b){ closeAddMenu(); insertAfter(id, b.dataset.am); }
+  });
+  addMenuEl = m;
+}
+document.addEventListener('pointerdown', e => {
+  if (addMenuEl && !e.target.closest('.addmenu') && !e.target.closest('[data-addafter]')) closeAddMenu();
+});
+
 $('#blockList').addEventListener('click', e => {
   const fmt = e.target.closest('[data-fmt]');
   if (fmt){ applyFormat(fmt.dataset.fmt, fmt.dataset.a, fmt.dataset.b); return; }
@@ -2527,6 +2584,8 @@ $('#blockList').addEventListener('click', e => {
     toggleMark(mk.dataset.mark, (ci && ci.value) || state.markColor || '#FDE68A');
     return;
   }
+  const aa = e.target.closest('[data-addafter]');
+  if (aa){ openAddMenu(aa, aa.dataset.addafter); return; }
   const strip = e.target.closest('[data-strip]');
   if (strip){ stripFormat(strip.dataset.strip); return; }
   const dup = e.target.closest('[data-dup]');
@@ -3256,11 +3315,11 @@ $('#fileJson').addEventListener('change', e => {
 async function capturePages(){
   const stack = $('#pageStack');
   const sc = $('#stageScroll');
-  const prevZoom = stack.style.zoom;
+  const prevT = stack.style.transform;
   const keepTop = sc.scrollTop, keepLeft = sc.scrollLeft;
   const hidden = Array.from(stack.children).map(w => w.style.display);
   Array.from(stack.children).forEach(w => { w.style.display = 'flex'; });
-  stack.style.zoom = '1';
+  stack.style.transform = 'none';
   sc.scrollTop = 0; sc.scrollLeft = 0;
   if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch(e){} }
   const scale = (Number(state.exportW) || 1080) / CANVAS_W;
@@ -3270,7 +3329,7 @@ async function capturePages(){
     const canvas = await html2canvas(p, {scale, useCORS:true, backgroundColor:null, logging:false});
     shots.push(canvas);
   }
-  stack.style.zoom = prevZoom;
+  stack.style.transform = prevT;
   Array.from(stack.children).forEach((w, i) => { w.style.display = hidden[i] || 'flex'; });
   sc.scrollTop = keepTop; sc.scrollLeft = keepLeft;
   return shots;
