@@ -305,6 +305,8 @@ body.ui-mobile #btnViewMode{padding:0 8px}
 .crow .cimg.ia-left{margin-left:0;margin-right:auto}
 .crow .cimg.ia-center{margin-left:auto;margin-right:auto}
 .crow .cimg.ia-right{margin-left:auto;margin-right:0}
+.cimg.ia-full{width:100%!important;margin-left:0;margin-right:0}
+.crow.imgfull{max-width:100%!important;align-self:stretch!important}
 .ish-rect{border-radius:0}
 .ish-round{border-radius:.5em}
 .ish-soft{border-radius:1.3em}
@@ -482,9 +484,12 @@ body.ui-mobile #btnViewMode{padding:0 8px}
 .fmag-b{flex:0 0 auto;margin:0 1.4em 1.05em;padding-top:.45em;border-top:1px solid;display:flex;justify-content:space-between;font-size:.6em;letter-spacing:.2em}
 
 /* 폴라로이드 */
-.fpola{position:absolute;inset:0;border-style:solid;border-width:0 16px;pointer-events:none}
-.fpola-t{flex:0 0 auto;height:16px}
-.fpola-b{flex:0 0 auto;padding:1.05em 1.2em 1.7em;text-align:center;font-family:'Gowun Dodum',sans-serif;font-size:.82em}
+.fpola{position:absolute;inset:0;border-style:solid;border-width:0 18px;pointer-events:none}
+.fpola-t{flex:0 0 auto;height:18px}
+.fpola-b{flex:0 0 auto;height:0;padding-bottom:22%;position:relative}
+.fpola-b span{position:absolute;left:1.2em;right:1.2em;top:0;bottom:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding-bottom:.4em;
+  font-family:'Gowun Dodum',sans-serif;font-size:1.05em;letter-spacing:.04em;line-height:1.55}
 
 /* 영수증 */
 .frc{font-family:ui-monospace,Menlo,Consolas,monospace}
@@ -524,7 +529,26 @@ body.ui-mobile #btnViewMode{padding:0 8px}
 .ftk-mv-t{font-size:1.35em;font-weight:700;letter-spacing:.16em;text-indent:.16em;line-height:1.2}
 .ftk-mv-s{display:flex;justify-content:space-between;font-size:.62em;letter-spacing:.12em;opacity:.85;margin-top:.25em}
 
+/* 일별 달력 */
+.fcal-rings{flex:0 0 auto;display:flex;justify-content:center;gap:3.4em;padding:1em 0 .2em}
+.fcal-rings i{display:block;width:1.05em;height:1.05em;border:.22em solid;border-radius:99px}
+.fcal-photo{position:relative;flex:0 0 auto;height:0;padding-bottom:62%;margin:.8em 1.15em .2em;border-radius:.55em;
+  background-size:cover;background-position:center;overflow:hidden}
+.fcal-photo span{position:absolute;inset:0;display:grid;place-items:center;font-size:.66em;letter-spacing:.14em}
+.fcal-date{flex:0 0 auto;display:flex;align-items:center;gap:1em;margin:0 1.15em;padding:.7em .2em .75em;border-bottom:2px solid}
+.fcal-my{display:flex;flex-direction:column;line-height:1.25}
+.fcal-my b{font-size:.95em;letter-spacing:.06em}
+.fcal-my small{font-size:.62em;opacity:.7;letter-spacing:.14em}
+.fcal-day{flex:1;text-align:center;font-size:3.3em;font-weight:800;line-height:1;letter-spacing:0}
+.fcal-wd{font-size:.78em;letter-spacing:.16em;font-weight:600}
+.fcal-foot{flex:0 0 auto;text-align:center;margin:0 1.1em;padding:.6em 0 .85em;border-top:1px solid;
+  font-size:.62em;letter-spacing:.3em;text-indent:.3em}
+
 /* 책 페이지 */
+.fbook-gut{position:absolute;inset:0;pointer-events:none;display:flex;justify-content:center}
+.fbook-gut .sh{display:block;width:9%;height:100%}
+.fbook-b.two{display:flex;justify-content:space-around}
+.cbody[data-cols] .crow{break-inside:avoid}
 .fbook-t{flex:0 0 auto;text-align:center;margin:0 2em;padding:1.05em 1em .55em;border-bottom:1px solid;
   font-family:'Gowun Batang',serif;font-size:.64em;letter-spacing:.34em;text-indent:.34em}
 .fbook-b{flex:0 0 auto;text-align:center;padding:.55em 1em 1.05em;
@@ -835,6 +859,7 @@ body.ui-mobile .blk textarea{font-size:16px}
                 <option value="magazine">매거진</option>
                 <option value="polaroid">폴라로이드</option>
                 <option value="book">책 페이지</option>
+                <option value="calendar">일별 달력</option>
                 <option value="film">필름 스트립</option>
                 <option value="ticket">티켓</option>
                 <option value="receipt">영수증</option>
@@ -854,7 +879,7 @@ body.ui-mobile .blk textarea{font-size:16px}
           </div>
           <div class="grid2" id="frameOpts" hidden>
             <div class="field"><label>테두리 색</label><input type="color" class="swatch" id="frameColor" value="#E9E7EC"></div>
-            <div class="field"><label id="frameTitleLbl">제목</label><input type="text" id="frameTitle" placeholder="창 제목"></div>
+            <div class="field" id="frameTitleWrap"><label id="frameTitleLbl">제목</label><input type="text" id="frameTitle" placeholder="창 제목"></div>
           </div>
           <div class="field" id="frameVarWrap" hidden>
             <label>세부 모양</label>
@@ -1065,7 +1090,8 @@ const FRAME_TUNE = {
   letter  :{ratio:'3:4',  canvasRadius:2,  frameColor:'#8A7150', padX:44, padY:34, gap:15},
   magazine:{ratio:'3:4',  canvasRadius:0,  frameColor:'#2A2A2E', padX:36, padY:18, gap:15},
   polaroid:{ratio:'1:1',  canvasRadius:2,  frameColor:'#FFFFFF', padX:26, padY:22, gap:14},
-  book    :{ratio:'3:4',  canvasRadius:3,  frameColor:'#4B3B28', padX:48, padY:30, gap:15},
+  book    :{ratio:'custom', ratioW:1600, ratioH:1100, canvasRadius:4, frameColor:'#4B3B28', padX:44, padY:26, gap:14},
+  calendar:{ratio:'custom', ratioW:1200, ratioH:1150, canvasRadius:10, frameColor:'#C75050', padX:32, padY:18, gap:14},
   film    :{ratio:'custom', ratioW:1500, ratioH:1000, canvasRadius:0, frameColor:'#1B1814', padX:36, padY:24, gap:13},
   ticket  :{ratio:'3:4',  canvasRadius:6,  frameColor:'#2A2A2E', padX:32, padY:20, gap:14},
   receipt :{ratio:'custom', ratioW:900, ratioH:1700, canvasRadius:2, frameColor:'#2A2A2E', padX:30, padY:14, gap:13},
@@ -1084,7 +1110,7 @@ const RATIO_LABEL = {auto:'내용에 맞춤', custom:'직접 입력'};
 const ratioName = v => RATIO_LABEL[v] || String(v).replace(':', ' : ');
 const FRAME_TITLE_LBL = {browser:'탭·주소창 글자', terminal:'창 이름', monitor:'받침대 글자', phone:'상태바 시각',
   chat:'상대 이름', player:'트랙 이름', vn:'이름표', rpg:'이름표', hud:'플레이어 이름', letter:'머리글',
-  magazine:'제호', polaroid:'손글씨 캡션', ticket:'티켓 문구', custom:'쓰지 않음'};
+  magazine:'제호', polaroid:'쓰지 않음', ticket:'티켓 문구', custom:'쓰지 않음'};
 const FRAME_TITLE_PH = {browser:'발췌', terminal:'~/chat — zsh', monitor:'', phone:'9:41',
   chat:'대화', player:'이름 없는 트랙', vn:'화자', rpg:'화자', hud:'PLAYER', letter:'편지',
   magazine:'ARCHIVE', polaroid:'2026. 여름', ticket:'ADMIT ONE', custom:''};
@@ -1433,7 +1459,7 @@ function buildRow(bk){
 
   if (!sp){
     const nr = state.narrator || {};
-    row.className = 'crow narr ' + (nr.italic ? 'yi' : 'ni');
+    row.className = 'crow narr ' + (nr.italic ? 'yi' : 'ni') + (bk.image && bk.imgAlign === 'full' ? ' imgfull' : '');
     const nal = bk.align || nr.align || 'center';
     row.style.textAlign = nal;
     /* 왼쪽·오른쪽으로 맞추면 화자 말풍선과 시작점이 같아야 한다 */
@@ -1449,7 +1475,7 @@ function buildRow(bk){
   }
 
   const side = ['left','center','right','wide'].indexOf(sp.align) >= 0 ? sp.align : 'left';
-  row.className = 'crow ' + side;
+  row.className = 'crow ' + side + (bk.image && bk.imgAlign === 'full' ? ' imgfull' : '');
   const nameColor = sp.nameColor || sp.text;
   const sep = state.nameSep || '';
   const inlineName = (state.mode !== 'line' || state.hideNames)
@@ -1509,7 +1535,8 @@ const FRAME_ELS = {
   letter:[['inner','이중 테두리',true],['head','머리글',true]],
   magazine:[['mast','제호',true],['foot','아래 줄',true]],
   polaroid:[['caption','손글씨 캡션',true]],
-  book:[['head','상단 장 제목',true],['pageno','아래 쪽 번호',true]],
+  book:[['spread','펼친 두 면',true],['head','상단 장 제목',true],['pageno','아래 쪽 번호',true]],
+  calendar:[['rings','상단 고리',true],['photo','사진 칸',true],['date','날짜 줄',true],['foot','아래 줄',true]],
   film:[['holes','위·아래 구멍 줄',true],['label','필름 라벨 줄',true]],
   ticket:[['stub','위 절취선',true],['barcode','바코드',true],['info','아래 정보 줄',true]],
   receipt:[['head','상단 상호',true],['items','항목 목록',true],['total','합계',true],['barcode','바코드',true]]
@@ -1539,8 +1566,11 @@ const FRAME_FIELDS = {
        {k:'keys', l:'조작 힌트', ph:'◉ 확인　✕ 취소　▤ 메뉴'}],
   letter:[],
   magazine:[{k:'left', l:'아래 왼쪽', ph:'ISSUE 01'}, {k:'right', l:'아래 오른쪽', ph:'2026'}],
-  polaroid:[],
-  book:[{k:'page', l:'쪽 번호', ph:'12'}],
+  polaroid:[{k:'cap', l:'손글씨 캡션 (여러 줄)', type:'area', ph:'2026. 8. 1.\n그날의 기록'}],
+  book:[{k:'page', l:'왼쪽 면 쪽 번호', ph:'12'}, {k:'page2', l:'오른쪽 면 쪽 번호', ph:'13'}],
+  calendar:[{k:'day', l:'날짜 (숫자)', ph:'1'}, {k:'month', l:'달', ph:'8월'}, {k:'year', l:'연도', ph:'2026'},
+            {k:'wd', l:'요일', ph:'토요일'}, {k:'foot', l:'아래 문구', ph:'오늘의 기록'},
+            {k:'photo', l:'사진', type:'image'}],
   film:[{k:'label', l:'필름 라벨', ph:'FUJICOLOR 400'}, {k:'no', l:'컷 번호', ph:'24A'}],
   'ticket:basic':[{k:'no', l:'번호', ph:'No. 001'}, {k:'info1', l:'아래 왼쪽', ph:'ADMIT ONE'}, {k:'info2', l:'아래 오른쪽', ph:'ALL AGES'}],
   'ticket:movie':[{k:'sub1', l:'상영관', ph:'CINEMA 3관'}, {k:'sub2', l:'좌석', ph:'H-12'},
@@ -1766,10 +1796,50 @@ function frameParts(){
       '<span>' + T('left', 'ISSUE 01') + '</span><span>' + T('right', '2026') + '</span></div>' : ''
   };
 
-  if (f === 'book') return {
-    top: elOn('head') ? '<div class="fbook-t" style="color:' + c + ';border-color:' + hexToRgba(c,.35) + '">' + (title || '제 1 장') + '</div>' : '',
-    bottom: elOn('pageno') ? '<div class="fbook-b" style="color:' + c + '">— ' + T('page', '12') + ' —</div>' : ''
-  };
+  if (f === 'book'){
+    const spread = elOn('spread');
+    const soft2 = hexToRgba(c, .35);
+    return {
+      top: elOn('head') ? '<div class="fbook-t" style="color:' + c + ';border-color:' + soft2 + '">' + (title || '제 1 장') + '</div>' : '',
+      bottom: elOn('pageno')
+        ? (spread
+          ? '<div class="fbook-b two" style="color:' + c + '"><span>— ' + T('page', '12') + ' —</span>' +
+            '<span>— ' + T('page2', '13') + ' —</span></div>'
+          : '<div class="fbook-b" style="color:' + c + '">— ' + T('page', '12') + ' —</div>')
+        : '',
+      overlay: spread
+        ? '<div class="fbook-gut"><i class="sh" style="background:linear-gradient(90deg,' + hexToRgba(c,0) + ' 0%,' +
+          hexToRgba(c,.16) + ' 45%,' + hexToRgba(c,.22) + ' 50%,' + hexToRgba(c,.16) + ' 55%,' + hexToRgba(c,0) + ' 100%)"></i></div>'
+        : '',
+      cols: spread ? 2 : 0,
+      pad:[8, 10]
+    };
+  }
+
+  if (f === 'calendar'){
+    const photo = fim('photo');
+    const dash = hexToRgba(c, .3);
+    const rings = elOn('rings')
+      ? '<div class="fcal-rings">' +
+        '<i style="border-color:' + c + '"></i><i style="border-color:' + c + '"></i><i style="border-color:' + c + '"></i>' +
+        '</div>' : '';
+    const photoBox = elOn('photo')
+      ? '<div class="fcal-photo" style="' +
+        (photo ? 'background-image:url(' + escAttr(photo) + ')' : 'background:' + hexToRgba(c,.1) + ';color:' + hexToRgba(c,.55)) + '">' +
+        (photo ? '' : '<span>사진을 넣어 보세요</span>') + '</div>' : '';
+    const date = elOn('date')
+      ? '<div class="fcal-date" style="color:' + c + ';border-color:' + dash + '">' +
+        '<span class="fcal-my"><b>' + T('month', '8월') + '</b><small>' + T('year', '2026') + '</small></span>' +
+        '<span class="fcal-day">' + T('day', '1') + '</span>' +
+        '<span class="fcal-wd">' + T('wd', '토요일') + '</span>' +
+        '</div>' : '';
+    return {
+      top: rings + photoBox + date,
+      bottom: elOn('foot')
+        ? '<div class="fcal-foot" style="color:' + c + ';border-color:' + dash + '">' + T('foot', '오늘의 기록') + '</div>' : '',
+      pad:[6, 8]
+    };
+  }
 
   if (f === 'film'){
     const strip = '<div class="ffilm" style="background-color:' + c + '"></div>';
@@ -1783,7 +1853,9 @@ function frameParts(){
 
   if (f === 'polaroid') return {
     top:'<div class="fpola-t" style="background:' + c + '"></div>',
-    bottom:'<div class="fpola-b" style="background:' + c + ';color:' + ink + '">' + (elOn('caption') ? title : '') + '</div>',
+    bottom:'<div class="fpola-b" style="background:' + c + ';color:' + ink + '">' +
+      (elOn('caption') && ftx('cap', '')
+        ? '<span>' + escHtml(ftx('cap', '')).replace(/\n/g, '<br>') + '</span>' : '') + '</div>',
     overlay:'<div class="fpola" style="border-color:' + c + '"></div>'
   };
 
@@ -1925,7 +1997,13 @@ function makePage(){
     body.style.padding = 'calc(var(--c-pady) + ' + (q.t || 0) + 'px) calc(var(--c-padx) + ' + (q.x || 0) + 'px) ' +
       'calc(var(--c-pady) + ' + (q.b || 0) + 'px)';
   }
+  if (fr && fr.cols){
+    body.style.columnCount = fr.cols;
+    body.style.columnGap = '4.2em';
+    body.dataset.cols = fr.cols;
+  }
   if (fr && fr.body) body.style.cssText += ';' + fr.body;
+  if (fr && fr.inbody) frag(fr.inbody).forEach(n => body.appendChild(n));
   if (bgOnBody){
     paintBg(body);
     body.style.zIndex = '0';
@@ -1962,13 +2040,23 @@ function makePage(){
 }
 
 /* 블록 하나가 한 장을 넘길 때, 문단 단위로 잘라 다음 장으로 넘긴다 */
+/* 마지막 블록의 바닥이 '높이 - 아래 여백' 선을 넘으면 가득 찬 것.
+   scrollHeight 비교는 엔진에 따라 아래 여백을 무시하고 바닥까지 채워 버린다. */
+function overBottom(body){
+  /* 두 단(펼친 책)에서는 넘친 내용이 아래가 아니라 옆으로 삐져나간다 */
+  if (body.dataset.cols) return body.scrollWidth > body.clientWidth + 1;
+  const last = body.lastElementChild;
+  if (!last) return false;
+  const padB = parseFloat(getComputedStyle(body).paddingBottom) || 0;
+  return last.offsetTop + last.offsetHeight > body.clientHeight - padB + 1;
+}
 function splitRow(body, row){
   const holder = row.querySelector('.bubble') || row.querySelector('.stack') || row;
   if (holder.children.length < 2) return null;
   const full = row.cloneNode(true);
   const fullHolder = full.querySelector('.bubble') || full.querySelector('.stack') || full;
   let keep = holder.children.length;
-  while (keep > 1 && body.scrollHeight > body.clientHeight + 1){
+  while (keep > 1 && overBottom(body)){
     holder.removeChild(holder.lastElementChild);
     keep--;
   }
@@ -1991,7 +2079,7 @@ function renderCanvas(){
   stack.appendChild(cur.wrap);
   pages.push(cur);
 
-  const overflows = body => body.scrollHeight > body.clientHeight + 1;
+  const overflows = overBottom;
   const nextPage = () => { const p2 = makePage(); stack.appendChild(p2.wrap); pages.push(p2); return p2; };
   const queue = rows.slice();
   let guard = 0;
@@ -2163,7 +2251,7 @@ function renderCast(){
               .map(([vv, ll]) => '<option value="' + vv + '"' + ((sp.avatarShape || 'circle') === vv ? ' selected' : '') + '>' + ll + '</option>').join('') +
           '</select></div>' +
         '<div class="field" style="margin:0"><label>프로필 크기</label>' +
-          '<div class="rangerow" style="margin:0"><input type="range" min="60" max="180" value="' + (sp.avatarSize || 100) + '" data-avsz="' + sp.id + '"><output>' + (sp.avatarSize || 100) + '%</output></div></div>' +
+          '<div class="rangerow" style="margin:0"><input type="range" min="60" max="300" value="' + (sp.avatarSize || 100) + '" data-avsz="' + sp.id + '"><output>' + (sp.avatarSize || 100) + '%</output></div></div>' +
       '</div>';
     list.appendChild(card);
   });
@@ -2392,7 +2480,9 @@ function syncControls(){
   $('#frameOnTop').checked = !!state.frameOnTop;
   $('#frameColor').value = state.frameColor || '#E9E7EC';
   $('#frameTitle').value = state.frameTitle || '';
-  $('#frameTitleLbl').textContent = FRAME_TITLE_LBL[state.frame] || '제목';
+  const tlbl = FRAME_TITLE_LBL[state.frame] || '제목';
+  $('#frameTitleWrap').hidden = tlbl === '쓰지 않음';
+  $('#frameTitleLbl').textContent = tlbl;
   $('#frameTitle').placeholder = FRAME_TITLE_PH[state.frame] || '창 제목';
   $('#ratioSel').value = state.ratio;
   $('#pageNoSel').value = state.pageNo || 'off';
@@ -2575,7 +2665,7 @@ $('#blockList').addEventListener('change', e => {
     const f = el.files && el.files[0];
     if (b && f) readImage(f, async d => {
       snapshot();
-      try { b.imgOrig = await processImage(d, {}); }
+      try { b.imgOrig = await prepareImage(d, 2600); }
       catch (err){ toast('이 이미지는 읽을 수 없습니다'); return; }
       if (!b.imgShape) b.imgShape = 'round';
       reprocessBlockImage(b);
@@ -2658,17 +2748,23 @@ $('#blockList').addEventListener('click', e => {
 });
 /* ---------------- 이미지 준비 ---------------- */
 const IMG_SHAPES = [['round','둥근 사각'],['rect','사각'],['soft','많이 둥근'],['pill','알약'],['circle','원형']];
-const IMG_ALIGNS = [['','기본 (글 정렬 따라)'],['left','왼쪽'],['center','가운데'],['right','오른쪽']];
+const IMG_ALIGNS = [['','기본 (글 정렬 따라)'],['left','왼쪽'],['center','가운데'],['right','오른쪽'],['full','좌우 꽉 채움']];
 
 function loadImg(src){
   return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
 }
 /* 큰 사진은 줄여서 담고, 원형은 픽셀에 직접 오려 낸다.
    (html2canvas가 clip-path를 그리지 못해서 CSS로는 저장 결과가 어긋난다) */
+/* 원본이 한도 이내면 재인코딩 없이 그대로 쓴다 — 화질을 지키는 핵심 */
+async function prepareImage(src, maxDim){
+  const img = await loadImg(src);
+  if (Math.max(img.naturalWidth, img.naturalHeight) <= maxDim) return src;
+  return processImage(src, {maxDim});
+}
 async function processImage(src, opt){
   opt = opt || {};
   const img = await loadImg(src);
-  const maxDim = opt.maxDim || 1600;
+  const maxDim = opt.maxDim || 2600;
   let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
   if (opt.circle){
     const side = Math.min(sw, sh);
@@ -2697,7 +2793,7 @@ async function processImage(src, opt){
     const d = ctx.getImageData(0, 0, w, h).data;
     for (let i = 3; i < d.length; i += 4){ if (d[i] < 250){ hasAlpha = true; break; } }
   } catch (e){ hasAlpha = true; }
-  return hasAlpha ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', 0.92);
+  return hasAlpha ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', opt.quality || 0.95);
 }
 async function reprocessBlockImage(bk){
   if (!bk.imgOrig) bk.imgOrig = bk.image;
@@ -2965,9 +3061,16 @@ $('#tuneApply').addEventListener('click', () => {
   if (picked.length) applyTune(picked);
 });
 $('#frameAsk').addEventListener('change', e => { state.frameAsk = e.target.value; });
+/* 예전에 '제목' 칸에 적어 둔 폴라로이드 캡션을 여러 줄 칸으로 옮긴다 */
+function migratePolaroidCaption(){
+  if (!state.frameTitle) return;
+  if (!state.frameText) state.frameText = {};
+  if (!state.frameText['polaroid.cap']) state.frameText['polaroid.cap'] = state.frameTitle;
+}
 $('#frameSel').addEventListener('change', e => {
   snapshot();
   state.frame = e.target.value;
+  if (state.frame === 'polaroid') migratePolaroidCaption();
   const mode = state.frameAsk || 'ask';
   const list = mode === 'never' ? [] : pendingTune(state.frame);
   syncControls(); renderCanvas();
@@ -3016,7 +3119,7 @@ $('#frameFields').addEventListener('change', e => {
     if (file) readImage(file, async d => {
       snapshot();
       if (!state.frameImg) state.frameImg = {};
-      try { state.frameImg[state.frame + '.' + ik] = await processImage(d, {maxDim:1400}); }
+      try { state.frameImg[state.frame + '.' + ik] = await prepareImage(d, 2000); }
       catch (err){ toast('이 이미지는 읽을 수 없습니다'); return; }
       syncControls(); renderCanvas();
     });
@@ -3071,7 +3174,7 @@ $('#bgImage').addEventListener('change', e => {
   const f = e.target.files && e.target.files[0];
   if (f) readImage(f, async d => {
     snapshot();
-    try { state.bgImage = await processImage(d, {maxDim:1800}); }
+    try { state.bgImage = await prepareImage(d, 2800); }
     catch (err){ toast('이 이미지는 읽을 수 없습니다'); return; }
     state.bgKind = 'image';
     syncControls(); renderCanvas();
@@ -3723,7 +3826,17 @@ let saveTimer = null;
 function autosave(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
+    try { localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch(e){
+      /* 고화질 원본 때문에 한도를 넘었을 때: 글은 살리고 이미지만 빼고 저장 */
+      try {
+        const lite = JSON.parse(JSON.stringify(state));
+        lite.bgImage = null;
+        lite.frameImg = {};
+        (lite.blocks || []).forEach(b => { b.image = null; b.imgOrig = null; });
+        localStorage.setItem(KEY, JSON.stringify(lite));
+      } catch(e2){}
+    }
   }, 900);
 }
 const _renderCanvas = renderCanvas;
@@ -3743,6 +3856,7 @@ renderCanvas = function(){ _renderCanvas(); autosave(); };
       }
     }
   } catch(e){}
+  if (state.frame === 'polaroid') migratePolaroidCaption();
   upgradeRangeRows();
   try {
     const pw = Number(localStorage.getItem('chatFormatter.panelW'));
