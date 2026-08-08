@@ -1030,7 +1030,7 @@ body.ui-mobile .blk textarea{font-size:16px}
     <div id="pasteColorWrap" hidden>
       <label class="lbl" style="margin-bottom:6px">붙여넣은 글자색 배정</label>
       <div id="pasteColors"></div>
-      <p class="hint">색이 딸려온 경우에만 보입니다. 색마다 <b>화자 이름</b>과 <b>대사·지문</b>을 정합니다. 이름을 비우면 나레이션이 됩니다.<br>한 화자의 대사색과 지문색이 다르면 두 색에 같은 이름 기재.<br>줄 첫머리의 이름표는 본문에서 빼고 화자로만 사용.<br>화자의 이름과 색은 화자 탭에서 변경 가능.</p>
+      <p class="hint">색이 딸려온 경우에만 보입니다. <b>모바일에서는 색이 딸려오지 않는 경우가 많아 기능이 불완전합니다.</b> 색마다 <b>화자 이름</b>과 <b>대사·지문</b>을 정합니다. 이름을 비우면 나레이션이 됩니다.<br>한 화자의 대사색과 지문색이 다르면 두 색에 같은 이름 기재.<br>줄 첫머리의 이름표는 본문에서 빼고 화자로만 사용.<br>화자의 이름과 색은 화자 탭에서 변경 가능.</p>
     </div>
     <div class="foot">
       <button class="btn" id="pasteCancel">취소</button>
@@ -2349,8 +2349,8 @@ function renderCast(){
         '<div class="cc"><input type="color" value="' + (sp.nameColor || sp.text) + '" data-c="nameColor" data-id="' + sp.id + '"><span>이름</span></div>' +
       '</div>' +
       '<div class="field" style="margin:9px 0 0"><label>말풍선 투명도</label>' +
-        '<div class="rangerow" style="margin:0"><input type="range" min="0" max="100" value="' + bubAlpha(sp) +
-          '" data-balpha="' + sp.id + '"><output>' + bubAlpha(sp) + '%</output></div></div>' +
+        '<div class="rangerow" style="margin:0"><input type="range" min="0" max="100" value="' + (100 - bubAlpha(sp)) +
+          '" data-balpha="' + sp.id + '"><output>' + (100 - bubAlpha(sp)) + '%</output></div></div>' +
       '<div class="grid2" style="margin-top:9px">' +
         '<div class="field" style="margin:0"><label>프로필 모양</label>' +
           '<select data-avsh="' + sp.id + '">' +
@@ -2650,8 +2650,9 @@ $('#castList').addEventListener('input', e => {
   if (el.dataset.balpha){
     const sp = speakerOf(el.dataset.balpha);
     if (sp){
-      sp.bubbleAlpha = Number(el.value);
-      sp.noBubble = Number(el.value) === 0;
+      /* 화면은 투명도, 안에 담기는 값은 불투명도 — 예전 설정 파일과 호환된다 */
+      sp.bubbleAlpha = 100 - Number(el.value);
+      sp.noBubble = Number(el.value) === 100;
       const o = el.closest('.rangerow').querySelector('.numin, output'); if (o) o.value = el.value + '%';
       renderCanvas();
     }
