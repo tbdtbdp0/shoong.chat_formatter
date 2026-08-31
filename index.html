@@ -1245,12 +1245,16 @@ body.ui-mobile .blk textarea{font-size:16px}
             </div>
             <div class="field"><label>여러 장일 때 방식</label>
               <select id="expMode">
+                <option value="zip">PNG 묶음 한 파일 (ZIP)</option>
                 <option value="png">장마다 PNG 하나씩</option>
                 <option value="pdf">한 파일로 묶기 (PDF)</option>
               </select>
             </div>
           </div>
-          <p class="hint">PNG 낱장으로 여러 장을 받으면 브라우저가 <b>다운로드 허용</b>을 반복해 묻습니다. 브라우저의 보안 확인이니 전부 허용.<br>안 뜨게 하려면 <b>한 파일로 묶기</b>. 단, PDF는 배경 투명화 불가.</p>
+          <p class="hint">· <b>PNG</b>: 낱장으로 여러 번 저장.<br>
+          · <b>ZIP</b>: 여러 장의 png를 한 파일로. 투명 배경 유지.<br>
+          · <b>PDF</b>: 한 파일로 저장. (단, 배경 투명화 불가 &amp; 파일 화질 저하 될 수 있음)</p>
+          <p class="hint"><b>안드로이드 삼성 인터넷</b>: ZIP 파일 저장 권장. 여러장을 일반 PNG로 저장 시, 첫 장만 저장됨. 크롬&amp;구글은 정상작동.</p>
           <p class="hint">비율을 고정하면 넘치는 내용은 여러 장으로 나뉩니다. 나뉜 장수는 미리보기에, 몇 쪽인지는 대사 블록마다 표시.<br>배경이 투명이면 PNG도 투명하게 저장됩니다.</p>
         </div>
       </section>
@@ -1586,7 +1590,7 @@ const DEFAULT_STATE = () => ({
   bgPattern: 'none', bgPatColor: '#FFFFFF', bgPatSize: 26, bgPatOpacity: 35, bgPatSymbol: '★',
   font: "'Pretendard',sans-serif", fontSize: 16, lineHeight: 1.65, letterSpace: 0, pgap: 42, indent: 0,
   padX: 30, padY: 30, gap: 15, bubbleRadius: 18, canvasRadius: 14,
-  exportW: 1080, exportName: '발췌', exportMode: 'png', exportPages: 'all',
+  exportW: 1080, exportName: '발췌', exportMode: 'zip', exportPages: 'all',
   speakers: [
     {id:'s1', name:'화자1', align:'left', avatar:null, ...AUTO_COLORS[1]},
     {id:'s2', name:'화자2', align:'right', avatar:null, ...AUTO_COLORS[0]}
@@ -3222,7 +3226,7 @@ function syncControls(){
   $('#bubRange').value = state.bubbleRadius; $('#bubOut').value = state.bubbleRadius + 'px';
   $('#radRange').value = state.canvasRadius; $('#radOut').value = state.canvasRadius + 'px';
   $('#expW').value = state.exportW; $('#expName').value = state.exportName;
-  $('#expMode').value = state.exportMode || 'png';
+  $('#expMode').value = state.exportMode || 'zip';
   $('#expPages').value = state.exportPages || 'all';
   renderThemes();
 }
@@ -4950,6 +4954,64 @@ async function buildPdf(canvases){
   put('trailer\n<</Size ' + count + '/Root 1 0 R>>\nstartxref\n' + xrefPos + '\n%%EOF\n');
   return new Blob(parts, {type:'application/pdf'});
 }
+/* ---- 여러 장을 ZIP 한 파일로 ----
+   삼성 인터넷 등 일부 브라우저는 사용자가 누른 그 순간(transient activation)을 벗어난
+   두 번째 이후의 내려받기를 조용히 버린다. 물어보지도, 오류를 내지도 않는다.
+   그래서 첫 장만 남는다. 파일 하나로 묶어 한 번만 내려받으면 그 규칙에 걸리지 않는다.
+   PNG는 이미 압축돼 있으므로 다시 누르지 않고 그대로 담는다(stored). */
+const CRC32_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++){
+    let c = i;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[i] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes){
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC32_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function zipStored(files){
+  const enc = new TextEncoder();
+  const d = new Date();
+  const dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  const parts = [], central = [];
+  let off = 0;
+  files.forEach(f => {
+    const name = enc.encode(f.name);
+    const crc = crc32(f.data), n = f.data.length;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+    lh.setUint16(8, 0, true); lh.setUint16(10, dosTime, true); lh.setUint16(12, dosDate, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, n, true); lh.setUint32(22, n, true);
+    lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    parts.push(new Uint8Array(lh.buffer), name, f.data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
+    ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+    ch.setUint16(12, dosTime, true); ch.setUint16(14, dosDate, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, n, true); ch.setUint32(24, n, true);
+    ch.setUint16(28, name.length, true); ch.setUint16(30, 0, true); ch.setUint16(32, 0, true);
+    ch.setUint16(34, 0, true); ch.setUint16(36, 0, true); ch.setUint32(38, 0, true);
+    ch.setUint32(42, off, true);
+    central.push(new Uint8Array(ch.buffer), name);
+    off += 30 + name.length + n;
+  });
+  const cdSize = central.reduce((t, b) => t + b.length, 0);
+  const eo = new DataView(new ArrayBuffer(22));
+  eo.setUint32(0, 0x06054b50, true); eo.setUint16(4, 0, true); eo.setUint16(6, 0, true);
+  eo.setUint16(8, files.length, true); eo.setUint16(10, files.length, true);
+  eo.setUint32(12, cdSize, true); eo.setUint32(16, off, true); eo.setUint16(20, 0, true);
+  return new Blob(parts.concat(central, [new Uint8Array(eo.buffer)]), {type:'application/zip'});
+}
+function canvasBytes(canvas){
+  return new Promise(res => canvas.toBlob(async blob => {
+    res(blob ? new Uint8Array(await blob.arrayBuffer()) : null);
+  }, 'image/png'));
+}
 function downloadBlob(blob, name){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -5000,7 +5062,22 @@ $('#btnExport').addEventListener('click', async () => {
       btn.disabled = false; btn.textContent = '이미지 저장';
       return;
     }
-    if (shots.length > 1 && (state.exportMode || 'png') === 'pdf'){
+    const mode = state.exportMode || 'zip';
+    if (shots.length > 1 && mode === 'zip'){
+      btn.textContent = '한 파일로 묶는 중…';
+      const files = [];
+      for (let i = 0; i < shots.length; i++){
+        const bytes = await canvasBytes(shots[i]);
+        if (bytes) files.push({name: base + '_' + String(i + 1).padStart(2, '0') + '.png', data: bytes});
+      }
+      if (files.length){
+        downloadBlob(zipStored(files), base + '.zip');
+        toast(files.length + '장을 ZIP 한 파일로 저장했습니다');
+      } else toast('저장에 실패했습니다');
+      btn.disabled = false; btn.textContent = '이미지 저장';
+      return;
+    }
+    if (shots.length > 1 && mode === 'pdf'){
       btn.textContent = '한 파일로 묶는 중…';
       const pdf = await buildPdf(shots);
       if (pdf){
@@ -5019,8 +5096,12 @@ $('#btnExport').addEventListener('click', async () => {
       if (await downloadCanvas(shots[i], name)) ok++;
       if (i < shots.length - 1) await new Promise(r => setTimeout(r, 350));
     }
-    if (ok === shots.length) toast(shots.length > 1 ? shots.length + '장을 저장했습니다' : '이미지를 저장했습니다');
-    else toast(ok + ' / ' + shots.length + '장만 저장됐습니다 · 브라우저의 여러 파일 내려받기를 허용해 주세요');
+    if (ok < shots.length)
+      toast(ok + ' / ' + shots.length + '장만 저장됐습니다 · 여러 파일 내려받기를 허용해 주세요');
+    else if (shots.length > 1)
+      /* 링크를 눌렀다고 파일이 받아졌다는 뜻은 아니다. 조용히 버리는 브라우저가 있다 */
+      toast(shots.length + '장을 보냈습니다 · 일부만 받아졌다면 ZIP으로 저장하세요');
+    else toast('이미지를 저장했습니다');
   } catch (err){ console.error(err); toast('저장에 실패했습니다'); }
   btn.disabled = false; btn.textContent = '이미지 저장';
 });
