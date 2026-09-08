@@ -27,7 +27,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none!important}
-html,body{height:100%}
+html,body{height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{font-family:var(--ui);background:var(--shell);color:var(--ink);overflow:hidden;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font-family:inherit;color:inherit}
 button{cursor:pointer;background:none;border:none}
@@ -280,6 +280,7 @@ body.ui-mobile #btnViewMode{padding:0 8px}
   display:flex;flex-direction:column;
   background-color:#F1F1EF;background-size:cover;background-position:center;
   font-size:var(--c-fs);line-height:var(--c-lh);
+  -webkit-text-size-adjust:100%;text-size-adjust:100%;
   box-shadow:0 22px 50px rgba(0,0,0,.42),0 0 0 1px rgba(255,255,255,.06);
 }
 .page{letter-spacing:var(--c-ls)}
