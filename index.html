@@ -1859,6 +1859,8 @@ function tailHtml(){
   return (bubbly && state.bubbleShape === 'tail') ? '<span class="btail"></span>' : '';
 }
 /* 예전 '배경 없애기' 체크는 0% 로 이어 받는다 (0% = 완전 투명) */
+/* 화자별 대사 크기. 예전 설정 파일에는 없으므로 100%로 본다 */
+function spSize(sp){ return clamp(Number(sp && sp.size) || 100, 60, 160); }
 function bubAlpha(sp){
   if (sp.bubbleAlpha != null) return clamp(Number(sp.bubbleAlpha), 0, 100);
   return sp.noBubble ? 0 : 100;
@@ -1955,6 +1957,7 @@ function buildRow(bk){
 
   const side = ['left','center','right','wide'].indexOf(sp.align) >= 0 ? sp.align : 'left';
   row.className = 'crow ' + side + (bk.image && bk.imgAlign === 'full' ? ' imgfull' : '');
+  row.style.fontSize = (spSize(sp) / 100) + 'em';
   paintBox();
   const nameColor = sp.nameColor || sp.text;
   const sep = state.nameSep || '';
@@ -2867,6 +2870,8 @@ function renderCast(){
         '<div class="cc"><input type="color" value="' + sp.action + '" data-c="action" data-id="' + sp.id + '"><span>지문</span></div>' +
         '<div class="cc"><input type="color" value="' + (sp.nameColor || sp.text) + '" data-c="nameColor" data-id="' + sp.id + '"><span>이름</span></div>' +
       '</div>' +
+      '<div class="rangerow" style="margin:9px 0 4px"><span class="lbl">대사 크기</span>' +
+        '<input type="range" min="60" max="160" value="' + spSize(sp) + '" data-spsize="' + sp.id + '"><output>' + spSize(sp) + '%</output></div>' +
       '<div class="field" style="margin:9px 0 0"><label>말풍선 투명도</label>' +
         '<div class="rangerow" style="margin:0"><input type="range" min="0" max="100" value="' + (100 - bubAlpha(sp)) +
           '" data-balpha="' + sp.id + '"><output>' + (100 - bubAlpha(sp)) + '%</output></div></div>' +
@@ -3242,6 +3247,15 @@ $$('.tab').forEach(t => t.addEventListener('click', () => {
 /* ---------------- panel events (delegated) ---------------- */
 $('#castList').addEventListener('input', e => {
   const el = e.target;
+  if (el.dataset.spsize){
+    const sp = speakerOf(el.dataset.spsize);
+    if (sp){
+      sp.size = Number(el.value);
+      const o = el.closest('.rangerow').querySelector('.numin, output'); if (o) o.value = el.value + '%';
+      renderCanvas();
+    }
+    return;
+  }
   if (el.dataset.balpha){
     const sp = speakerOf(el.dataset.balpha);
     if (sp){
