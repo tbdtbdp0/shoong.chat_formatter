@@ -280,7 +280,7 @@ body.ui-mobile #btnViewMode{padding:0 8px}
   display:flex;flex-direction:column;
   background-color:#F1F1EF;background-size:cover;background-position:center;
   font-size:var(--c-fs);line-height:var(--c-lh);
-  -webkit-text-size-adjust:100%;text-size-adjust:100%;
+  -webkit-text-size-adjust:none;text-size-adjust:none;
   box-shadow:0 22px 50px rgba(0,0,0,.42),0 0 0 1px rgba(255,255,255,.06);
 }
 .page{letter-spacing:var(--c-ls)}
@@ -1573,7 +1573,7 @@ const DEFAULT_STATE = () => ({
   markColor: '#FDE68A', markAlpha: 0,
   bubbleWidth: 82, bubblePad: 95,
   bubbleShape: 'notch', bubbleShadow: true,
-  narrator: {text:'#5B5952', action:'#8A887F', align:'center', size:92, italic:false, bubble:'#FFFFFF', noBubble:true},
+  narrator: {text:'#5B5952', action:'#8A887F', align:'center', size:100, italic:false, bubble:'#FFFFFF', noBubble:true},
   textAlign: 'left',
   frame: 'none', frameColor: '#E9E7EC', frameTitle: '', frameHtml: '', frameOnTop: false, frameEls: {},
   frameAsk: 'ask', frameVar: {}, frameText: {}, frameImg: {},
@@ -1859,6 +1859,8 @@ function tailHtml(){
   return (bubbly && state.bubbleShape === 'tail') ? '<span class="btail"></span>' : '';
 }
 /* 예전 '배경 없애기' 체크는 0% 로 이어 받는다 (0% = 완전 투명) */
+/* 예전 기본값 92%를 새 기본값 100%로 올린다. 일부러 고른 다른 값은 두고 92만 옮긴다 */
+function migrateNarrSize(nr){ if (nr && Number(nr.size) === 92) nr.size = 100; return nr; }
 /* 화자별 대사 크기. 예전 설정 파일에는 없으므로 100%로 본다 */
 function spSize(sp){ return clamp(Number(sp && sp.size) || 100, 60, 160); }
 function bubAlpha(sp){
@@ -1947,7 +1949,7 @@ function buildRow(bk){
     row.style.setProperty('align-self', nal === 'right' ? 'flex-end' : nal === 'center' ? 'center' : 'flex-start', 'important');
     row.style.setProperty('max-width', nal === 'center' ? '88%' : '100%', 'important');
     row.style.color = nr.text || '#5B5952';
-    row.style.fontSize = ((Number(nr.size) || 92) / 100) + 'em';
+    row.style.fontSize = ((Number(nr.size) || 100) / 100) + 'em';
     const inner = paragraphsHtml(bk.text, {action: nr.action || '#8A887F', mark: colors.mark}, '', false, true) + imgHtml;
     row.innerHTML = nr.noBubble
       ? inner
@@ -2831,7 +2833,7 @@ function renderCast(){
         '<div class="cc"><input type="color" value="' + (nr.bubble || '#FFFFFF') + '" data-nrc="bubble"><span>바탕</span></div>' +
       '</div>' +
       '<div class="rangerow" style="margin:9px 0 4px"><span class="lbl">글자 크기</span>' +
-        '<input type="range" min="60" max="160" value="' + (nr.size || 92) + '" data-nr="size"><output>' + (nr.size || 92) + '%</output></div>' +
+        '<input type="range" min="60" max="160" value="' + (nr.size || 100) + '" data-nr="size"><output>' + (nr.size || 100) + '%</output></div>' +
       '<div class="grid2" style="margin:0 0 9px">' +
         '<div class="field" style="margin:0"><label>나레이션 글꼴</label>' +
           '<select data-nrfont="text">' + fontOptions(nr.font || '', '기본 글꼴') + '</select></div>' +
@@ -4767,7 +4769,7 @@ function applyPreset(pre){
   if (st.padding !== undefined && st.padX === undefined){ st.padX = st.padding; st.padY = st.padding; }
   STYLE_KEYS.forEach(k => { if (st[k] !== undefined) state[k] = st[k]; });
   state.marks = Object.assign({parenStar:true, star:true, paren:false, quote:false}, st.marks || {});
-  state.narrator = Object.assign(DEFAULT_STATE().narrator, st.narrator || {});
+  state.narrator = migrateNarrSize(Object.assign(DEFAULT_STATE().narrator, st.narrator || {}));
   if (Array.isArray(pre.speakers) && pre.speakers.length){
     const old = state.speakers.slice();
     const next = pre.speakers.map(sp => Object.assign({avatar:null, nameColor:null}, sp, {id: sp.id || uid()}));
@@ -5348,7 +5350,7 @@ renderCanvas = function(){ _renderCanvas(); autosave(); };
         state = Object.assign(DEFAULT_STATE(), loaded);
         state.marks = Object.assign({parenStar:true, star:true, paren:false, quote:false}, loaded.marks || {});
         if (loaded.padding !== undefined && loaded.padX === undefined){ state.padX = loaded.padding; state.padY = loaded.padding; }
-        state.narrator = Object.assign(DEFAULT_STATE().narrator, loaded.narrator || {});
+        state.narrator = migrateNarrSize(Object.assign(DEFAULT_STATE().narrator, loaded.narrator || {}));
         setTimeout(() => toast('지난번 작업을 이어서 불러왔습니다'), 600);
       }
     }
