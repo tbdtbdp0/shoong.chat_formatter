@@ -167,10 +167,16 @@ input[type=range]{width:100%;accent-color:var(--accent-line);height:18px}
 .pgstamp.pos-br{bottom:9px;right:14px}
 .pgstamp.pos-bl{bottom:9px;left:14px}
 .pgstamp.pos-tr{top:9px;right:14px}
-.pagemark{display:flex;align-items:center;gap:8px;margin:16px 0 7px;font-size:11px;letter-spacing:.14em}
+.pagemark{display:flex;align-items:center;gap:8px;margin:16px 0 7px;font-size:11px;letter-spacing:.14em;
+  cursor:pointer;user-select:none;width:100%;background:none;border:none;padding:0;text-align:left}
 .pagemark::before,.pagemark::after{content:'';flex:1;height:2px;border-radius:2px;background:var(--accent-line);opacity:.5}
-.pagemark span{flex:0 0 auto;padding:4px 11px;border-radius:99px;background:var(--accent);color:var(--accent-ink);font-weight:700;letter-spacing:.1em}
+.pagemark span{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:99px;
+  background:var(--accent);color:var(--accent-ink);font-weight:700;letter-spacing:.1em;transition:background .12s}
+.pagemark:hover span{background:var(--accent-hi)}
 .pagemark:first-child{margin-top:2px}
+.pagemark .arw{font-size:9px;letter-spacing:0;opacity:.75;transition:transform .12s}
+.pagemark.folded .arw{transform:rotate(-90deg)}
+.pagemark .cnt2{font-weight:600;letter-spacing:.02em;opacity:.7;font-size:10.5px}
 .pgno{flex:0 0 auto;min-width:17px;height:17px;padding:0 4px;border-radius:5px;background:var(--accent-soft);
   color:var(--accent-text);font-size:10px;font-weight:800;display:none;place-items:center}
 .pgno.on{display:grid}
@@ -839,6 +845,7 @@ body.ui-mobile .blk textarea{font-size:16px}
           <button class="btn sm" id="btnAddImg">+ 이미지</button>
           <button class="btn sm" id="btnAddRule">+ 구분선</button>
           <button class="btn sm" id="btnAddBreak" data-tip="여기서 다음 장으로 넘깁니다. 비율이 '내용에 맞춤'이어도 강제로 나뉩니다.">+ 페이지 나누기</button>
+          <button class="btn sm ghost" id="btnFoldAll" hidden data-tip="장별로 접어 두면 긴 원고도 한눈에 훑을 수 있습니다.&#10;장 구분선을 눌러 하나씩 접을 수도 있습니다.">⊟ 모두 접기</button>
         </div>
         <div class="pane-scroll">
           <div class="blocks" id="blockList"></div>
@@ -2754,6 +2761,33 @@ function renderCanvas(){
 }
 
 /* 대사 목록에 몇 쪽인지 표시한다 */
+/* 편집기 목록에서 장별로 접어 둘 수 있게 한다. 보기 상태일 뿐이라 저장하지 않는다.
+   블록 수가 바뀌면(추가·삭제·붙여넣기) 접힘을 풀어, 더한 블록이 숨어 있는 일이 없게 한다. */
+let foldedPages = new Set(), lastBlkCount = -1;
+function setPageFold(pg, folded){
+  if (folded) foldedPages.add(pg); else foldedPages.delete(pg);
+  applyPageFold();
+}
+function applyPageFold(){
+  const list = $('#blockList');
+  if (!list) return;
+  let pg = -1;
+  Array.from(list.children).forEach(el => {
+    if (el.classList.contains('pagemark')){
+      pg = Number(el.dataset.pg);
+      el.classList.toggle('folded', foldedPages.has(pg));
+      return;
+    }
+    if (pg >= 0) el.hidden = foldedPages.has(pg);
+  });
+  const btn = $('#btnFoldAll');
+  if (btn){
+    const marks = list.querySelectorAll('.pagemark').length;
+    btn.hidden = marks < 2;
+    const allFolded = marks > 0 && foldedPages.size >= marks;
+    btn.textContent = allFolded ? '⊞ 모두 펼치기' : '⊟ 모두 접기';
+  }
+}
 function paintPageMarkers(pageOf, total){
   const list = $('#blockList');
   if (!list) return;
@@ -2761,10 +2795,16 @@ function paintPageMarkers(pageOf, total){
   const keep = sc ? sc.scrollTop : 0;
   list.querySelectorAll('.pagemark').forEach(n => n.remove());
   const blks = Array.from(list.querySelectorAll('.blk'));
+  /* 블록이 늘거나 줄면 접힘을 푼다 — 방금 더한 블록이 접힌 장에 숨는 일을 막는다 */
+  if (blks.length !== lastBlkCount){ foldedPages.clear(); lastBlkCount = blks.length; }
   if (total < 2){
-    blks.forEach(el => { const b = el.querySelector('.pgno'); if (b){ b.textContent = ''; b.classList.remove('on'); } });
+    blks.forEach(el => { el.hidden = false; const b = el.querySelector('.pgno'); if (b){ b.textContent = ''; b.classList.remove('on'); } });
+    foldedPages.clear();
+    applyPageFold();
     return;
   }
+  const perPage = {};
+  blks.forEach(el => { const pg = pageOf[el.dataset.id]; if (pg !== undefined) perPage[pg] = (perPage[pg] || 0) + 1; });
   let last = -1;
   blks.forEach(el => {
     const pg = pageOf[el.dataset.id];
@@ -2774,13 +2814,18 @@ function paintPageMarkers(pageOf, total){
       badge.classList.toggle('on', pg !== undefined);
     }
     if (pg !== undefined && pg !== last){
-      const m = document.createElement('div');
+      const m = document.createElement('button');
       m.className = 'pagemark';
-      m.innerHTML = '<span>' + (pg + 1) + ' / ' + total + ' 쪽</span>';
+      m.type = 'button';
+      m.dataset.pg = pg;
+      m.title = '이 장의 블록을 접거나 펼칩니다';
+      m.innerHTML = '<span><i class="arw">▼</i>' + (pg + 1) + ' / ' + total + ' 쪽' +
+        '<b class="cnt2">· ' + (perPage[pg] || 0) + '</b></span>';
       list.insertBefore(m, el);
       last = pg;
     }
   });
+  applyPageFold();
   if (sc && sc.scrollTop !== keep) sc.scrollTop = keep;
 }
 
@@ -3609,6 +3654,8 @@ document.addEventListener('pointerdown', e => {
 });
 
 $('#blockList').addEventListener('click', e => {
+  const pm = e.target.closest('.pagemark');
+  if (pm){ const pg = Number(pm.dataset.pg); setPageFold(pg, !foldedPages.has(pg)); return; }
   const fmt = e.target.closest('[data-fmt]');
   if (fmt){ applyFormat(fmt.dataset.fmt, fmt.dataset.a, fmt.dataset.b); return; }
   const mset = e.target.closest('[data-markset]');
@@ -3930,6 +3977,12 @@ function addLine(afterId){
   const ta = $('[data-tx="' + nb.id + '"]');
   if (ta){ ta.focus(); ta.scrollIntoView({block:'center'}); }
 }
+$('#btnFoldAll').addEventListener('click', () => {
+  const marks = Array.from($('#blockList').querySelectorAll('.pagemark'));
+  if (foldedPages.size >= marks.length) foldedPages.clear();
+  else marks.forEach(m => foldedPages.add(Number(m.dataset.pg)));
+  applyPageFold();
+});
 $('#btnAddLine').addEventListener('click', () => addLine());
 $('#btnAddImg').addEventListener('click', () => {
   snapshot();
@@ -4355,9 +4408,9 @@ function scrollBlocksToPage(pg){
   const sc = list && list.closest('.pane-scroll');
   if (!sc) return;
   if (pg === 0){ sc.scrollTo({top:0, behavior:'smooth'}); return; }
-  const mark = Array.from(list.querySelectorAll('.pagemark'))
-    .find(m => parseInt(m.textContent, 10) === pg + 1);
+  const mark = Array.from(list.querySelectorAll('.pagemark')).find(m => Number(m.dataset.pg) === pg);
   if (!mark) return;
+  if (foldedPages.has(pg)) setPageFold(pg, false);
   const top = sc.scrollTop + mark.getBoundingClientRect().top - sc.getBoundingClientRect().top - 8;
   sc.scrollTo({top: Math.max(0, top), behavior:'smooth'});
 }
