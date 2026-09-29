@@ -839,8 +839,8 @@ body.ui-mobile .blk textarea{font-size:16px}
       <button class="btn ghost sm" id="btnCollapse">편집기 접기</button>
       <button class="btn ghost sm" id="btnUndo" data-tip="바로 전 편집 하나를 되돌립니다. (Ctrl+Z)">되돌리기</button>
       <button class="btn ghost sm" id="btnReset" data-tip="[비우고 시작]&#10;&#10;· 화자·대사·예시를 모두 지웁니다.&#10;· 스타일과 테두리는 기본값으로.&#10;· 한 번 더 확인하며, Ctrl+Z로 복구됩니다.">비우고 시작</button>
-      <label class="btn sm" data-tip="[설정 불러오기]&#10;&#10;.json에서 화자와 서식만 바꿔 끼웁니다.&#10;&#10;· 쓰던 대사는 그대로. 서식만 갈립니다.&#10;· 화자는 이름이 같으면 그대로, 다르면 순서대로 연결.&#10;· 옛 버전 파일도 열리며, 설정만 가져옵니다.">설정 불러오기<input type="file" id="fileJson" accept=".json" hidden></label>
-      <button class="btn sm" id="btnSaveJson" data-tip="[내 설정 저장]&#10;&#10;화자와 서식을 .json 하나로 내려받습니다.&#10;&#10;· 담기는 것: 화자, 테마, 표시 방식, 지문 규칙, 비율, 배경, 테두리, 폰트, 여백, 내보내기 크기&#10;· 안 담기는 것: 대사 내용, 붙인 이미지&#10;&#10;남에게 주면 같은 서식을 그대로 씁니다.">내 설정 저장</button>
+      <label class="btn sm" data-tip="[설정 불러오기]&#10;&#10;.json에서 화자와 서식만 바꿔 끼웁니다.&#10;&#10;· 쓰던 대사는 그대로. 서식만 갈립니다.&#10;· 화자는 이름이 같으면 그대로, 다르면 순서대로 연결.&#10;· 옛 버전 파일이나 작업 파일도 열리며, 설정만 가져옵니다.">설정 불러오기<input type="file" id="fileJson" accept=".json" hidden></label>
+      <button class="btn sm" id="btnSaveJson" data-tip="[내 설정 저장]&#10;&#10;화자와 서식을 .json 하나로 내려받습니다.&#10;&#10;· 담기는 것: 화자(프로필 사진 포함), 배경 이미지, 테마, 표시 방식, 지문 규칙, 비율, 테두리(사진 포함), 폰트, 여백, 내보내기 크기&#10;· 안 담기는 것: 대사, 이미지 블록&#10;&#10;남에게 주면 같은 서식을 그대로 씁니다.&#10;대사까지 통째로 남기려면 내보내기 탭의 「작업 파일 저장」.">내 설정 저장</button>
       <button class="btn sm" id="btnCopy">클립보드로 복사</button>
       <button class="btn accent" id="btnExport">이미지 저장</button>
     </div>
@@ -1306,7 +1306,7 @@ body.ui-mobile .blk textarea{font-size:16px}
       <!-- 내보내기 : 판 크기와 저장 -->
       <section class="tabpane" id="pane-export">
         <div class="pane-scroll">
-          <p class="hint pane-lead">한 장의 비율과, 이미지로 저장하는 방식을 정합니다.</p>
+          <p class="hint pane-lead">한 장의 비율, 이미지로 저장하는 방식, 작업 파일 저장·열기.</p>
 
           <details class="sec" data-sec="ratio">
           <summary><span class="sec-t">판 비율</span><span class="sec-d">한 장의 가로:세로. 고정하면 넘치는 내용은 여러 장으로 나뉩니다.</span></summary>
@@ -1358,6 +1358,24 @@ body.ui-mobile .blk textarea{font-size:16px}
           · <b>PDF</b>: 한 파일로 저장. (단, 배경 투명화 불가 &amp; 파일 화질 저하 될 수 있음)</p>
           <p class="hint"><b>안드로이드 삼성 인터넷</b>: ZIP 파일 저장 권장. 여러장을 일반 PNG로 저장 시, 첫 장만 저장됨. 크롬&amp;구글은 정상작동.</p>
           <p class="hint">배경이 투명이면 PNG도 투명하게 저장됩니다.</p>
+          </div>
+          </details>
+          <details class="sec" data-sec="work">
+          <summary><span class="sec-t">작업 파일</span><span class="sec-d">대사·화자·사진·서식을 통째로 파일 하나에 담아 두고 다시 엽니다.</span></summary>
+          <div class="sec-body">
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
+            <button class="btn sm accent" id="btnSaveWork">작업 파일 저장</button>
+            <label class="btn sm">작업 파일 열기<input type="file" id="fileWork" accept=".json,application/json" hidden></label>
+          </div>
+          <p class="hint">· <b>작업 파일</b>: 대사·이미지 블록·화자·배경·서식 전부. 다른 기기에서 열어 이어서 작업할 수 있습니다.<br>
+          · <b>내 설정 저장</b>(상단): 화자와 서식만. 대사와 이미지 블록은 빠집니다.<br>
+          · 열면 지금 작업이 파일 내용으로 바뀝니다. 되돌리기(Ctrl+Z)로 복구 가능.</p>
+          <p class="hint"><b>임시저장 안내</b><br>
+          · 작업은 <b>이 기기, 이 브라우저에만</b> 자동 저장됩니다.<br>
+          · 방문 기록·사이트 데이터를 지우면 함께 지워집니다.<br>
+          · 아이폰·사파리는 <b>7일 넘게 들어오지 않으면</b> 지울 수 있습니다.<br>
+          · 시크릿 창은 닫으면 사라집니다.<br>
+          · 오래 둘 작업은 <b>작업 파일로 저장</b>해 두세요.</p>
           </div>
           </details>
         </div>
@@ -5151,7 +5169,7 @@ const STYLE_KEYS = ['mode','theme','textAlign','hideNames','alignedText','wrapQu
   'ratio','ratioW','ratioH','usePageNo','useDocTitle','useStamp','pageNo','pageNoPos','pageNoColor','pageNoSize',
   'docTitle','docTitleAlign','docTitleWhere','docTitleColor','docTitleSize','docTitleFont','docTitleDeco','docTitleEyebrow','docTitleLs',
   'stampText','stampPos','stampColor','stampSize','stampFont','bgKind','bgColor','bgColor2','bgImage','bgFit','bgUnder','bgFade','bgFadeSize','tint',
-  'bgPattern','bgPatColor','bgPatSize','bgPatOpacity','bgPatSymbol','frame','frameColor','frameTitle','frameHtml','frameOnTop','frameEls','frameChoiceText','frameAsk','frameVar','frameText','frameImg',
+  'bgPattern','bgPatColor','bgPatSize','bgPatOpacity','bgPatSymbol','frame','frameColor','frameTitle','frameHtml','frameOnTop','frameEls','frameChoiceText','frameAsk','frameVar','frameText','frameImg','frameImgOrig','frameCrop',
   'font','fontSize','lineHeight','letterSpace','pgap','indent','padX','padY','gap','narrator',
   'bubbleWidth','bubblePad','bubbleShape','bubbleShadow','bubbleRadius','canvasRadius','exportW','exportMode','exportPages'];
 
@@ -5169,6 +5187,8 @@ function applyPreset(pre){
   const st = Object.assign({}, pre.style || {});
   if (st.padding !== undefined && st.padX === undefined){ st.padX = st.padding; st.padY = st.padding; }
   STYLE_KEYS.forEach(k => { if (st[k] !== undefined) state[k] = st[k]; });
+  /* 원본 없이 잘린 테두리 사진만 든 예전 파일: 지금 쓰던 원본과 섞이지 않게 비운다 */
+  if (st.frameImg !== undefined && st.frameImgOrig === undefined){ state.frameImgOrig = {}; state.frameCrop = {}; }
   state.marks = Object.assign({parenStar:true, star:true, paren:false, quote:false}, st.marks || {});
   state.narrator = migrateNarrSize(Object.assign(DEFAULT_STATE().narrator, st.narrator || {}));
   if (Array.isArray(pre.speakers) && pre.speakers.length){
@@ -5206,7 +5226,7 @@ $('#fileJson').addEventListener('change', e => {
       let pre;
       if (raw && raw.kind === 'chat-formatter-preset') pre = raw;
       else {
-        const full = migrate(raw);
+        const full = migrate(raw && raw.kind === 'chat-formatter-work' ? raw.state : raw);
         if (!full || !Array.isArray(full.speakers)) throw new Error('bad');
         const style = {};
         STYLE_KEYS.forEach(k => { if (full[k] !== undefined) style[k] = full[k]; });
@@ -5219,6 +5239,51 @@ $('#fileJson').addEventListener('change', e => {
       toast('설정을 적용했습니다 · 대사는 그대로 둡니다');
     } catch (err){ toast('이 파일은 읽을 수 없습니다'); }
     e.target.value = '';
+  };
+  r.readAsText(f);
+});
+
+/* ---------------- 작업 파일 ----------------
+   대사·사진·서식 전부를 파일 하나로. 사진은 원본만 담고, 자르기·원형·흐리게를 거친 표시용은
+   열 때 원본과 설정으로 다시 만든다(임시저장과 같은 방식). 그래서 화질은 그대로, 파일은 작다. */
+function adoptState(loaded){
+  state = Object.assign(DEFAULT_STATE(), loaded);
+  state.marks = Object.assign({parenStar:true, star:true, paren:false, quote:false}, loaded.marks || {});
+  if (loaded.padding !== undefined && loaded.padX === undefined){ state.padX = loaded.padding; state.padY = loaded.padding; }
+  state.narrator = migrateNarrSize(Object.assign(DEFAULT_STATE().narrator, loaded.narrator || {}));
+  if (state.frame === 'polaroid') migratePolaroidCaption();
+  rebuildDerivedImages();
+}
+$('#btnSaveWork').addEventListener('click', () => {
+  const photos = imageCandidates().length;
+  /* 큰 문자열을 한 번 더 풀었다 묶지 않게 겉만 이어 붙인다 */
+  const json = '{"kind":"chat-formatter-work","version":1,"savedAt":' + JSON.stringify(new Date().toISOString()) +
+    ',"state":' + savedJson(new Set()) + '}';
+  downloadBlob(new Blob([json], {type:'application/json'}), (state.exportName || '발췌') + '_작업.json');
+  toast('작업 파일을 저장했습니다' + (photos ? ' · 사진 ' + photos + '장 포함' : ''));
+});
+$('#fileWork').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    e.target.value = '';
+    let raw;
+    try { raw = JSON.parse(ev.target.result); } catch (err){ toast('이 파일은 읽을 수 없습니다'); return; }
+    /* 설정 파일을 골랐다면 서식만 적용한다 */
+    if (raw && raw.kind === 'chat-formatter-preset'){
+      snapshot(); applyPreset(raw); zoomAuto = true; renderAll();
+      toast('설정 파일입니다 · 서식만 적용했습니다');
+      return;
+    }
+    const loaded = raw && raw.kind === 'chat-formatter-work' ? raw.state : migrate(raw);
+    if (!loaded || !Array.isArray(loaded.blocks) || !Array.isArray(loaded.speakers)){ toast('작업 파일이 아닙니다'); return; }
+    if (state.blocks.length && !confirm('지금 작업을 이 파일 내용으로 바꿀까요?\n\n되돌리기(Ctrl+Z)로 복구할 수 있습니다.')) return;
+    snapshot();
+    adoptState(loaded);
+    zoomAuto = true;
+    renderAll();
+    toast('작업 파일을 열었습니다');
   };
   r.readAsText(f);
 });
@@ -5860,11 +5925,7 @@ renderCanvas = function(){ _renderCanvas(); autosave(); };
     if (saved){
       const loaded = JSON.parse(saved);
       if (loaded && Array.isArray(loaded.blocks) && loaded.blocks.length){
-        state = Object.assign(DEFAULT_STATE(), loaded);
-        state.marks = Object.assign({parenStar:true, star:true, paren:false, quote:false}, loaded.marks || {});
-        if (loaded.padding !== undefined && loaded.padX === undefined){ state.padX = loaded.padding; state.padY = loaded.padding; }
-        state.narrator = migrateNarrSize(Object.assign(DEFAULT_STATE().narrator, loaded.narrator || {}));
-        rebuildDerivedImages();
+        adoptState(loaded);
         setTimeout(() => toast('지난번 작업을 이어서 불러왔습니다'), 600);
       }
     }
