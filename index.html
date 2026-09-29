@@ -67,7 +67,7 @@ body.panel-hidden .main{grid-template-columns:0 7px minmax(0,1fr)}
 body.panel-hidden .panel{visibility:hidden;overflow:hidden;min-width:0;border-right:none}
 .panel{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
 .tabs{display:flex;padding:0 12px;border-bottom:1px solid var(--line);gap:2px;flex:0 0 auto;min-width:0;max-width:100%}
-.tab{position:relative;padding:13px 14px 12px;font-size:13.5px;font-weight:600;color:var(--muted)}
+.tab{position:relative;padding:13px 11px 12px;white-space:nowrap;font-size:13.5px;font-weight:600;color:var(--muted)}
 .tab[aria-selected="true"]{color:var(--ink)}
 .tab[aria-selected="true"]::after{content:'';position:absolute;left:10px;right:10px;bottom:-1px;height:2px;background:var(--accent-line)}
 .tab .cnt{margin-left:5px;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
@@ -83,6 +83,22 @@ body.panel-hidden .panel{visibility:hidden;overflow:hidden;min-width:0;border-ri
 .eyebrow::before{content:'';flex:0 0 auto;width:4px;height:15px;border-radius:99px;background:var(--accent-line)}
 .eyebrow::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--accent-line),transparent)}
 .hint{font-size:11.5px;line-height:1.6;color:var(--muted);margin:-4px 2px 12px}
+.hint code{background:#E2F0FA;border-radius:4px;padding:1px 5px;font-size:11px;color:var(--accent-text)}
+.pane-lead{margin:0 2px 12px}
+/* 설정 묶음: 접힌 채로 제목과 한두 줄 설명만, 펼치면 세부 설정 */
+.sec{border:1px solid var(--line);border-radius:10px;background:var(--panel);margin-bottom:8px;min-width:0}
+.sec>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;align-items:center;padding:11px 12px;border-radius:10px;user-select:none}
+.sec>summary::-webkit-details-marker{display:none}
+.sec>summary:hover{background:var(--field)}
+.sec>summary:focus-visible{outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.sec>summary::after{content:'';grid-column:2;grid-row:1 / span 2;width:8px;height:8px;margin-right:3px;
+  border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg) translateY(-2px);transition:transform .15s}
+.sec[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
+.sec[open]>summary{border-radius:10px 10px 0 0}
+.sec-t{display:flex;align-items:center;gap:8px;font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:.06em;color:var(--accent-text)}
+.sec-t::before{content:'';flex:0 0 auto;width:4px;height:14px;border-radius:99px;background:var(--accent-line)}
+.sec-d{grid-column:1;font-size:11.5px;line-height:1.5;color:var(--muted);padding-left:12px}
+.sec-body{padding:14px 12px 6px;border-top:1px solid var(--line2);min-width:0}
 
 .field{margin-bottom:12px}
 .field>label,.lbl{display:block;font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:5px;letter-spacing:.01em}
@@ -833,8 +849,9 @@ body.ui-mobile .blk textarea{font-size:16px}
       <nav class="tabs" role="tablist">
         <button class="tab" role="tab" aria-selected="true" data-tab="script">대사 <span class="cnt" id="cntBlocks">0</span></button>
         <button class="tab" role="tab" aria-selected="false" data-tab="cast">화자 <span class="cnt" id="cntCast">0</span></button>
-        <button class="tab" role="tab" aria-selected="false" data-tab="style">스타일</button>
-        <button class="tab" role="tab" aria-selected="false" data-tab="canvas">캔버스</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="text">표시</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="deco">꾸미기</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="export">내보내기</button>
       </nav>
 
       <!-- 대사 -->
@@ -861,13 +878,14 @@ body.ui-mobile .blk textarea{font-size:16px}
         </div>
       </section>
 
-      <!-- 스타일 : 대사가 어떻게 보일지 -->
-      <section class="tabpane" id="pane-style">
+      <!-- 표시 : 대사를 어떻게 읽고 담을지 -->
+      <section class="tabpane" id="pane-text">
         <div class="pane-scroll">
-          <div class="eyebrow">테마</div>
-          <div class="themes" id="themeGrid"></div>
+          <p class="hint pane-lead">대사를 어떻게 읽고, 어떤 틀에 담을지 정합니다.</p>
 
-          <div class="eyebrow">대사 표시</div>
+          <details class="sec" data-sec="mode">
+          <summary><span class="sec-t">대사 표시 방식</span><span class="sec-d">말풍선·글줄·인용구 중 대사를 담을 틀. 고른 틀의 모양·폭·기호도 여기서.</span></summary>
+          <div class="sec-body">
           <div class="field">
             <span class="sublbl">말풍선 계열</span>
             <div class="segbar" id="modeSegA">
@@ -923,8 +941,35 @@ body.ui-mobile .blk textarea{font-size:16px}
           </div>
           <label class="check"><input type="checkbox" id="optHideNames"> 화자 이름 숨기기</label>
           <label class="check"><input type="checkbox" id="optAligned"> 글줄·인용구에서도 좌/우 배치 쓰기</label>
+          </div>
+          </details>
 
-          <div class="eyebrow">텍스트 정렬</div>
+          <details class="sec" data-sec="marks">
+          <summary><span class="sec-t">지문 규칙</span><span class="sec-d">어떤 기호 안을 행동 지문으로 읽을지, 대사와 한 줄에 섞였을 때 나눌지.</span></summary>
+          <div class="sec-body">
+          <p class="hint">맨 아래 괄호 규칙은 대사 속 일반 괄호까지 물들어 기본은 꺼짐.</p>
+          <label class="check"><input type="checkbox" id="mkParenStar" checked> <code>*(괄호)*</code> 안을 지문으로</label>
+          <label class="check"><input type="checkbox" id="mkStar" checked> <code>*별표*</code> 안을 지문으로</label>
+          <label class="check"><input type="checkbox" id="mkQuote"> <code>"따옴표"</code> 밖을 전부 지문으로</label>
+          <label class="check"><input type="checkbox" id="mkParen"> <code>(괄호)</code> 안을 지문으로</label>
+          <div class="field" style="margin-top:12px">
+            <label>지문과 대사가 한 줄에 섞였을 때</label>
+            <select id="actionMode">
+              <option value="inline">한 문단으로 이어 쓰기</option>
+              <option value="split">줄을 바꿔 따로 나누기</option>
+            </select>
+          </div>
+          <p class="hint">예: <code>*창밖을 보며* 눈이 오려나.</code><br>
+          · 이어 쓰기 — <i>창밖을 보며</i> 눈이 오려나.<br>
+          · 나누기 — <i>창밖을 보며</i> ↵ 눈이 오려나. (두 문단)<br>
+          지문과 대사를 애초에 다른 줄에 썼다면 차이가 없습니다.<br>
+          <b>서적＋풍선·인용구</b>에서는 화자 대사가 늘 나뉘므로 나레이션 블록에만 적용됩니다.</p>
+          </div>
+          </details>
+
+          <details class="sec" data-sec="align">
+          <summary><span class="sec-t">텍스트 정렬</span><span class="sec-d">말풍선·글줄 안에서 글줄이 어느 쪽에 붙을지.</span></summary>
+          <div class="sec-body">
           <div class="field">
             <div class="segbar" id="alignSeg">
               <button data-v="left">왼쪽</button>
@@ -938,53 +983,89 @@ body.ui-mobile .blk textarea{font-size:16px}
           · <b>텍스트 정렬</b> — 그 안에서 글줄이 어느 쪽에 붙는가<br>
           보통 둘은 다르게 둡니다. <b>양쪽</b>은 두 줄 이상일 때만 티가 납니다.<br>
           블록별로 바꾸려면 대사 탭에서.</p>
-
-          <div class="eyebrow">지문 규칙</div>
-          <p class="hint">무엇을 행동 지문으로 볼지 고릅니다.<br>맨 아래 괄호 규칙은 대사 속 일반 괄호까지 물들어 기본은 꺼짐.</p>
-          <label class="check"><input type="checkbox" id="mkParenStar" checked> <code>*(괄호)*</code> 안을 지문으로</label>
-          <label class="check"><input type="checkbox" id="mkStar" checked> <code>*별표*</code> 안을 지문으로</label>
-          <label class="check"><input type="checkbox" id="mkQuote"> <code>"따옴표"</code> 밖을 전부 지문으로</label>
-          <label class="check"><input type="checkbox" id="mkParen"> <code>(괄호)</code> 안을 지문으로</label>
-          <div class="field">
-            <label>지문 배치</label>
-            <select id="actionMode">
-              <option value="inline">대사와 한 줄에 (인라인)</option>
-              <option value="split">문단으로 분리</option>
-            </select>
           </div>
+          </details>
         </div>
       </section>
 
-      <!-- 캔버스 : 판 자체의 모양 -->
-      <section class="tabpane" id="pane-canvas">
+      <!-- 꾸미기 : 판의 모양과 장식 -->
+      <section class="tabpane" id="pane-deco">
         <div class="pane-scroll">
-          <div class="eyebrow">비율과 배경</div>
-          <div class="grid2">
-            <div class="field"><label>비율</label>
-              <select id="ratioSel">
-                <option value="auto">내용에 맞춤</option>
-                <option value="1:1">1 : 1</option>
-                <option value="3:4">3 : 4</option>
-                <option value="4:3">4 : 3</option>
-                <option value="9:16">9 : 16</option>
-                <option value="16:9">16 : 9</option>
-                <option value="custom">직접 입력</option>
-              </select>
-            </div>
-            <div class="field"><label>배경</label>
-              <select id="bgKind">
-                <option value="solid">단색</option>
-                <option value="gradient">그라데이션</option>
-                <option value="image">이미지</option>
-                <option value="none">투명 (배경 없음)</option>
-              </select>
-            </div>
+          <p class="hint pane-lead">색·글꼴·배경·장식처럼 보이는 모양을 정합니다.</p>
+
+          <details class="sec" data-sec="theme">
+          <summary><span class="sec-t">테마</span><span class="sec-d">말풍선·글자·배경 색 조합을 한 번에 바꿉니다.</span></summary>
+          <div class="sec-body">
+          <div class="themes" id="themeGrid"></div>
           </div>
-          <div class="grid2" id="customRatio" hidden>
-            <div class="field"><label>가로 비</label><input type="number" id="ratioW" value="2" min="1" max="99" step="1"></div>
-            <div class="field"><label>세로 비</label><input type="number" id="ratioH" value="3" min="1" max="99" step="1"></div>
+          </details>
+
+          <details class="sec" data-sec="font">
+          <summary><span class="sec-t">글자</span><span class="sec-d">폰트, 글자 크기, 줄 간격·자간, 문단 간격과 들여쓰기.</span></summary>
+          <div class="sec-body">
+          <div class="field"><label>폰트</label>
+            <select id="fontSel">
+              <optgroup label="고딕">
+                <option value="'Pretendard',sans-serif">프리텐다드</option>
+                <option value="'Noto Sans KR',sans-serif">본고딕</option>
+                <option value="'IBM Plex Sans KR',sans-serif">IBM 플렉스</option>
+                <option value="'Gowun Dodum',sans-serif">고운돋움</option>
+              </optgroup>
+              <optgroup label="명조 · 바탕">
+                <option value="'Noto Serif KR',serif">본명조</option>
+                <option value="'Gowun Batang',serif">고운바탕</option>
+                <option value="'Hahmlet',serif">함렛</option>
+              </optgroup>
+              <optgroup label="한글 · 제목용">
+                <option value="'Black Han Sans',sans-serif">검은고딕 · 두꺼운 제목</option>
+                <option value="'Gasoek One',sans-serif">가석 · 아주 두꺼운</option>
+                <option value="'Song Myung',serif">송명 · 옛 활자 제목</option>
+              </optgroup>
+              <optgroup label="영문 · 본문">
+                <option value="'Playfair Display','Noto Serif KR',serif">Playfair Display</option>
+                <option value="'Cormorant Garamond','Noto Serif KR',serif">Cormorant Garamond</option>
+                <option value="'Cinzel','Noto Serif KR',serif">Cinzel · 로마 대문자</option>
+              </optgroup>
+              <optgroup label="영문 · 두꺼운 제목">
+                <option value="'Bebas Neue','Black Han Sans',sans-serif">Bebas Neue</option>
+                <option value="'Anton','Black Han Sans',sans-serif">Anton</option>
+              </optgroup>
+              <optgroup label="영문 · 필기체">
+                <option value="'Great Vibes',cursive">Great Vibes</option>
+                <option value="'Dancing Script',cursive">Dancing Script</option>
+                <option value="'Parisienne',cursive">Parisienne</option>
+              </optgroup>
+            </select>
           </div>
-          <p class="hint" id="customRatioTip" hidden>정하는 것은 가로:세로 비율뿐. 실제 크기는 <b>내보내기</b>의 가로 픽셀로.</p>
+          <div class="rangerow"><span class="lbl">크기</span><input type="range" id="fsRange" min="7" max="30" value="16"><output id="fsOut">16px</output></div>
+          <div class="rangerow" data-scale="100"><span class="lbl">줄 간격</span><input type="range" id="lhRange" min="120" max="220" value="165"><output id="lhOut">1.65</output></div>
+          <div class="rangerow" data-scale="100"><span class="lbl">자간</span><input type="range" id="lsRange" min="-5" max="20" value="0"><output id="lsOut">0</output></div>
+          <div class="rangerow" data-scale="100"><span class="lbl">문단 간격</span><input type="range" id="pgRange" min="0" max="200" value="42"><output id="pgOut">0.42</output></div>
+          <div class="rangerow" data-scale="100"><span class="lbl">첫 줄 들여쓰기</span><input type="range" id="inRange" min="0" max="400" value="0"><output id="inOut">0</output></div>
+          </div>
+          </details>
+
+          <details class="sec" data-sec="pad">
+          <summary><span class="sec-t">여백과 간격</span><span class="sec-d">판 가장자리 여백, 대화 사이 간격, 판 모서리 둥글기.</span></summary>
+          <div class="sec-body">
+          <div class="rangerow"><span class="lbl">좌우 여백</span><input type="range" id="padXRange" min="0" max="120" value="30"><output id="padXOut">30px</output></div>
+          <div class="rangerow"><span class="lbl">위아래 여백</span><input type="range" id="padYRange" min="0" max="120" value="30"><output id="padYOut">30px</output></div>
+          <div class="rangerow"><span class="lbl">대화 간격</span><input type="range" id="gapRange" min="0" max="56" value="15"><output id="gapOut">15px</output></div>
+          <div class="rangerow"><span class="lbl">모서리 각</span><input type="range" id="radRange" min="0" max="36" value="14"><output id="radOut">14px</output></div>
+          </div>
+          </details>
+
+          <details class="sec" data-sec="bg">
+          <summary><span class="sec-t">배경</span><span class="sec-d">단색·그라데이션·이미지·투명과 무늬, 배경 밝기 덮개.</span></summary>
+          <div class="sec-body">
+          <div class="field"><label>배경</label>
+            <select id="bgKind">
+              <option value="solid">단색</option>
+              <option value="gradient">그라데이션</option>
+              <option value="image">이미지</option>
+              <option value="none">투명 (배경 없음)</option>
+            </select>
+          </div>
           <div class="grid2" id="bgSolid">
             <div class="field"><label>배경색</label><input type="color" class="swatch" id="bgColor" value="#F1F1EF"></div>
             <div class="field" id="bgColor2Wrap" hidden><label>두 번째 색</label><input type="color" class="swatch" id="bgColor2" value="#DCE6EF"></div>
@@ -1015,8 +1096,12 @@ body.ui-mobile .blk textarea{font-size:16px}
             </div>
           </div>
           <div class="rangerow"><span class="lbl">배경 덮개</span><input type="range" id="tint" min="-60" max="60" value="0"><output id="tintOut">0</output></div>
+          </div>
+          </details>
 
-          <div class="eyebrow">추가 표기</div>
+          <details class="sec" data-sec="extras">
+          <summary><span class="sec-t">추가 표기</span><span class="sec-d">쪽 번호, 상단 챕터 제목, 모서리 출처 표시.</span></summary>
+          <div class="sec-body">
           <label class="check"><input type="checkbox" id="usePageNo"> 쪽 번호 넣기</label>
           <div id="pageNoOpts" hidden style="margin-top:9px">
           <div class="grid3">
@@ -1102,8 +1187,12 @@ body.ui-mobile .blk textarea{font-size:16px}
           <div class="field"><label>모서리 글꼴</label><select id="stampFont"></select></div>
           <p class="hint">캔버스 모서리에 남기는 출처 표기. 저장 이미지에도 찍힙니다.</p>
           </div>
+          </div>
+          </details>
 
-          <div class="eyebrow">테두리</div>
+          <details class="sec" data-sec="frame">
+          <summary><span class="sec-t">테두리</span><span class="sec-d">인터넷 창·휴대폰·미연시 같은 장식 틀을 판에 두릅니다.</span></summary>
+          <div class="sec-body">
           <div class="field"><label>종류</label>
             <select id="frameSel">
               <option value="none">없음</option>
@@ -1191,55 +1280,42 @@ body.ui-mobile .blk textarea{font-size:16px}
             · <code>&lt;script&gt;</code>는 삭제됨. <code>&lt;style&gt;</code>은 <code>.fcustom</code> 아래로 좁혀서.<br>
             · 가운데는 대사 자리. 비워 두세요.</p>
           </div>
+          </div>
+          </details>
+        </div>
+      </section>
 
-          <div class="eyebrow">글자</div>
-          <div class="field"><label>폰트</label>
-            <select id="fontSel">
-              <optgroup label="고딕">
-                <option value="'Pretendard',sans-serif">프리텐다드</option>
-                <option value="'Noto Sans KR',sans-serif">본고딕</option>
-                <option value="'IBM Plex Sans KR',sans-serif">IBM 플렉스</option>
-                <option value="'Gowun Dodum',sans-serif">고운돋움</option>
-              </optgroup>
-              <optgroup label="명조 · 바탕">
-                <option value="'Noto Serif KR',serif">본명조</option>
-                <option value="'Gowun Batang',serif">고운바탕</option>
-                <option value="'Hahmlet',serif">함렛</option>
-              </optgroup>
-              <optgroup label="한글 · 제목용">
-                <option value="'Black Han Sans',sans-serif">검은고딕 · 두꺼운 제목</option>
-                <option value="'Gasoek One',sans-serif">가석 · 아주 두꺼운</option>
-                <option value="'Song Myung',serif">송명 · 옛 활자 제목</option>
-              </optgroup>
-              <optgroup label="영문 · 본문">
-                <option value="'Playfair Display','Noto Serif KR',serif">Playfair Display</option>
-                <option value="'Cormorant Garamond','Noto Serif KR',serif">Cormorant Garamond</option>
-                <option value="'Cinzel','Noto Serif KR',serif">Cinzel · 로마 대문자</option>
-              </optgroup>
-              <optgroup label="영문 · 두꺼운 제목">
-                <option value="'Bebas Neue','Black Han Sans',sans-serif">Bebas Neue</option>
-                <option value="'Anton','Black Han Sans',sans-serif">Anton</option>
-              </optgroup>
-              <optgroup label="영문 · 필기체">
-                <option value="'Great Vibes',cursive">Great Vibes</option>
-                <option value="'Dancing Script',cursive">Dancing Script</option>
-                <option value="'Parisienne',cursive">Parisienne</option>
-              </optgroup>
+      <!-- 내보내기 : 판 크기와 저장 -->
+      <section class="tabpane" id="pane-export">
+        <div class="pane-scroll">
+          <p class="hint pane-lead">한 장의 비율과, 이미지로 저장하는 방식을 정합니다.</p>
+
+          <details class="sec" data-sec="ratio">
+          <summary><span class="sec-t">판 비율</span><span class="sec-d">한 장의 가로:세로. 고정하면 넘치는 내용은 여러 장으로 나뉩니다.</span></summary>
+          <div class="sec-body">
+          <div class="field"><label>비율</label>
+            <select id="ratioSel">
+              <option value="auto">내용에 맞춤</option>
+              <option value="1:1">1 : 1</option>
+              <option value="3:4">3 : 4</option>
+              <option value="4:3">4 : 3</option>
+              <option value="9:16">9 : 16</option>
+              <option value="16:9">16 : 9</option>
+              <option value="custom">직접 입력</option>
             </select>
           </div>
-          <div class="rangerow"><span class="lbl">크기</span><input type="range" id="fsRange" min="7" max="30" value="16"><output id="fsOut">16px</output></div>
-          <div class="rangerow" data-scale="100"><span class="lbl">줄 간격</span><input type="range" id="lhRange" min="120" max="220" value="165"><output id="lhOut">1.65</output></div>
-          <div class="rangerow" data-scale="100"><span class="lbl">자간</span><input type="range" id="lsRange" min="-5" max="20" value="0"><output id="lsOut">0</output></div>
-          <div class="rangerow" data-scale="100"><span class="lbl">문단 간격</span><input type="range" id="pgRange" min="0" max="200" value="42"><output id="pgOut">0.42</output></div>
-          <div class="rangerow" data-scale="100"><span class="lbl">첫 줄 들여쓰기</span><input type="range" id="inRange" min="0" max="400" value="0"><output id="inOut">0</output></div>
+          <div class="grid2" id="customRatio" hidden>
+            <div class="field"><label>가로 비</label><input type="number" id="ratioW" value="2" min="1" max="99" step="1"></div>
+            <div class="field"><label>세로 비</label><input type="number" id="ratioH" value="3" min="1" max="99" step="1"></div>
+          </div>
+          <p class="hint" id="customRatioTip" hidden>정하는 것은 가로:세로 비율뿐. 실제 크기는 아래 <b>저장</b>의 가로 픽셀로.</p>
+          <p class="hint">비율을 고정하면 넘치는 내용은 여러 장으로 나뉩니다. 나뉜 장수는 미리보기에, 몇 쪽인지는 대사 블록마다 표시.</p>
+          </div>
+          </details>
 
-          <div class="eyebrow">여백과 모양</div>
-          <div class="rangerow"><span class="lbl">좌우 여백</span><input type="range" id="padXRange" min="0" max="120" value="30"><output id="padXOut">30px</output></div>
-          <div class="rangerow"><span class="lbl">위아래 여백</span><input type="range" id="padYRange" min="0" max="120" value="30"><output id="padYOut">30px</output></div>
-          <div class="rangerow"><span class="lbl">대화 간격</span><input type="range" id="gapRange" min="0" max="56" value="15"><output id="gapOut">15px</output></div>
-          <div class="rangerow"><span class="lbl">캔버스 각</span><input type="range" id="radRange" min="0" max="36" value="14"><output id="radOut">14px</output></div>
-
-          <div class="eyebrow">내보내기</div>
+          <details class="sec" data-sec="save">
+          <summary><span class="sec-t">저장</span><span class="sec-d">이미지 가로 픽셀, 파일 이름, 여러 장일 때 PNG·ZIP·PDF.</span></summary>
+          <div class="sec-body">
           <div class="grid2">
             <div class="field"><label>가로 픽셀</label><input type="number" id="expW" value="1080" min="200" max="4000" step="20"></div>
             <div class="field"><label>파일 이름</label><input type="text" id="expName" value="발췌"></div>
@@ -1263,7 +1339,9 @@ body.ui-mobile .blk textarea{font-size:16px}
           · <b>ZIP</b>: 여러 장의 png를 한 파일로. 투명 배경 유지.<br>
           · <b>PDF</b>: 한 파일로 저장. (단, 배경 투명화 불가 &amp; 파일 화질 저하 될 수 있음)</p>
           <p class="hint"><b>안드로이드 삼성 인터넷</b>: ZIP 파일 저장 권장. 여러장을 일반 PNG로 저장 시, 첫 장만 저장됨. 크롬&amp;구글은 정상작동.</p>
-          <p class="hint">비율을 고정하면 넘치는 내용은 여러 장으로 나뉩니다. 나뉜 장수는 미리보기에, 몇 쪽인지는 대사 블록마다 표시.<br>배경이 투명이면 PNG도 투명하게 저장됩니다.</p>
+          <p class="hint">배경이 투명이면 PNG도 투명하게 저장됩니다.</p>
+          </div>
+          </details>
         </div>
       </section>
 
@@ -1437,7 +1515,7 @@ const THEMES = {
 };
 const MODE_HINT = {
   bubble:'메신저처럼 화자마다 좌우로 말풍선이 붙습니다.',
-  mixed:'대사만 말풍선 안에, 행동 지문은 밖에 서술처럼. 지문 배치와 상관없이 늘 나뉩니다.',
+  mixed:'대사만 말풍선 안에, 행동 지문은 밖에 서술처럼. 지문 규칙의 줄 나누기 설정과 상관없이 늘 나뉩니다.',
   line:'말풍선 없이 이름과 대사를 한 줄에. 이름 뒤 기호와 감싸는 기호는 따로 고릅니다.',
   quote:'대사를 인용문처럼 들여쓰고 이름은 아래에 출처처럼. 행동 지문은 상자 밖으로 빠집니다.'
 };
@@ -3290,6 +3368,19 @@ $$('.tab').forEach(t => t.addEventListener('click', () => {
   $$('.tab').forEach(x => x.setAttribute('aria-selected', String(x === t)));
   $$('.tabpane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + t.dataset.tab));
 }));
+/* 설정 묶음은 접힌 채로 시작하고, 펼쳐 둔 것만 기억한다 */
+(() => {
+  const KEY = 'chatFormatter.secOpen';
+  let open = {};
+  try { open = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch(e){}
+  $$('details.sec').forEach(d => {
+    if (open[d.dataset.sec]) d.open = true;
+    d.addEventListener('toggle', () => {
+      open[d.dataset.sec] = d.open;
+      try { localStorage.setItem(KEY, JSON.stringify(open)); } catch(e){}
+    });
+  });
+})();
 
 /* ---------------- panel events (delegated) ---------------- */
 $('#castList').addEventListener('input', e => {
