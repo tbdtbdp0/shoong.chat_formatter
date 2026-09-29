@@ -4163,6 +4163,7 @@ async function reprocessBlockImage(bk, opt){
   }
   if (reprocTurn[bk.id] !== turn) return;
   bk.image = out;
+  if (opt && opt.quiet) return;
   /* 슬라이더를 끄는 중에 목록을 다시 그리면 손잡이가 사라진다. 그때는 썸네일만 바꾼다 */
   if (opt && opt.keepList){
     const th = document.querySelector('.blk[data-id="' + bk.id + '"] .thumb');
@@ -5728,21 +5729,76 @@ document.addEventListener('keydown', e => {
 /* ---------------- autosave (복구용) ---------------- */
 const KEY = 'chatFormatter.v7';
 let saveTimer = null;
+/* 임시저장에는 원본 사진만 담는다. 자르기·원형·흐리게를 거친 표시용 사진은 불러올 때 다시 만든다.
+   예전에는 한 장이 원본 + 잘린 것 + 표시용으로 2~3벌 들어갔고(자른 것은 PNG라 원본의 3배),
+   사진 한두 장에 브라우저 한도(약 5MB)를 넘겨 '사진 전부 빼고 글만' 저장되곤 했다. */
+function savedJson(drop){
+  const fi = state.frameImg, fo = state.frameImgOrig || {};
+  return JSON.stringify(state, function(k, v){
+    if (k === 'imgCropped') return undefined;
+    if (k === 'image' && this.imgOrig) return undefined;
+    if (k === 'avatar' && this.avatarOrig) return undefined;
+    if (this === fi && fo[k]) return undefined;
+    /* 그래도 넘치면 고른 사진을 뺀다 */
+    if (drop.size){
+      if (k === 'bgImage' && drop.has('bg')) return null;
+      if ((k === 'imgOrig' || k === 'image') && this.id && drop.has('b:' + this.id)) return null;
+      if ((k === 'avatarOrig' || k === 'avatar') && this.id && drop.has('s:' + this.id)) return null;
+      if ((this === fi || this === fo) && drop.has('f:' + k)) return undefined;
+    }
+    return v;
+  });
+}
+/* 뺄 수 있는 사진들 — 큰 것부터 뺀다 */
+function imageCandidates(){
+  const L = [];
+  if (state.bgImage) L.push({id:'bg', n: state.bgImage.length});
+  state.blocks.forEach(b => { const v = b.imgOrig || b.image; if (v) L.push({id:'b:' + b.id, n: v.length}); });
+  state.speakers.forEach(sp => { const v = sp.avatarOrig || sp.avatar; if (v) L.push({id:'s:' + sp.id, n: v.length}); });
+  const fo = state.frameImgOrig || {}, fi = state.frameImg || {};
+  new Set(Object.keys(fo).concat(Object.keys(fi))).forEach(k => { const v = fo[k] || fi[k]; if (v) L.push({id:'f:' + k, n: v.length}); });
+  return L.sort((a, b) => b.n - a.n);
+}
+let lastDropNote = '';
 function autosave(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); }
-    catch(e){
-      /* 고화질 원본 때문에 한도를 넘었을 때: 글은 살리고 이미지만 빼고 저장 */
-      try {
-        const lite = JSON.parse(JSON.stringify(state));
-        lite.bgImage = null;
-        lite.frameImg = {};
-        (lite.blocks || []).forEach(b => { b.image = null; b.imgOrig = null; });
-        localStorage.setItem(KEY, JSON.stringify(lite));
-      } catch(e2){}
+    const drop = new Set(), cands = imageCandidates();
+    for (let i = 0; i <= cands.length; i++){
+      try { localStorage.setItem(KEY, savedJson(drop)); break; }
+      catch(e){ if (i < cands.length) drop.add(cands[i].id); else return; }
+    }
+    /* 빠진 사진이 달라졌을 때만 한 번 알린다 */
+    const note = Array.from(drop).sort().join(',');
+    if (note !== lastDropNote){
+      lastDropNote = note;
+      if (drop.size) toast('브라우저 임시저장 공간이 모자라 사진 ' + drop.size + '장은 임시저장에서 뺐습니다 · 지금 화면에는 그대로 있습니다');
     }
   }, 900);
+}
+/* 불러온 뒤, 원본만 있는 사진의 표시용을 다시 만든다. 먼저 원본을 보여 주고 다 되면 바꿔 끼운다 */
+async function rebuildDerivedImages(){
+  const jobs = [];
+  state.blocks.forEach(b => {
+    if (!b.imgOrig || b.image) return;
+    b.image = b.imgOrig;
+    const c = b.imgCrop, cropped = c && !(c.x <= 0 && c.y <= 0 && c.w >= 1 && c.h >= 1);
+    if (cropped || b.imgShape === 'circle' || (b.imgFade && b.imgFade !== 'none')) jobs.push(reprocessBlockImage(b, {quiet:true}));
+  });
+  state.speakers.forEach(sp => {
+    if (!sp.avatarOrig || sp.avatar) return;
+    sp.avatar = sp.avatarOrig;
+    if (sp.avatarCrop) jobs.push(cropDataUrl(sp.avatarOrig, sp.avatarCrop).then(u => { sp.avatar = u; }).catch(() => {}));
+  });
+  const fo = state.frameImgOrig || {};
+  if (!state.frameImg) state.frameImg = {};
+  Object.keys(fo).forEach(k => {
+    if (!fo[k] || state.frameImg[k]) return;
+    state.frameImg[k] = fo[k];
+    const rc = (state.frameCrop || {})[k];
+    if (rc) jobs.push(cropDataUrl(fo[k], rc).then(u => { state.frameImg[k] = u; }).catch(() => {}));
+  });
+  if (jobs.length){ await Promise.all(jobs); renderAll(); }
 }
 const _renderCanvas = renderCanvas;
 renderCanvas = function(){ _renderCanvas(); autosave(); };
@@ -5757,6 +5813,7 @@ renderCanvas = function(){ _renderCanvas(); autosave(); };
         state.marks = Object.assign({parenStar:true, star:true, paren:false, quote:false}, loaded.marks || {});
         if (loaded.padding !== undefined && loaded.padX === undefined){ state.padX = loaded.padding; state.padY = loaded.padding; }
         state.narrator = migrateNarrSize(Object.assign(DEFAULT_STATE().narrator, loaded.narrator || {}));
+        rebuildDerivedImages();
         setTimeout(() => toast('지난번 작업을 이어서 불러왔습니다'), 600);
       }
     }
