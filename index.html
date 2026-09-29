@@ -1101,6 +1101,7 @@ body.ui-mobile .blk textarea{font-size:16px}
                 <select id="bgUnder">
                   <option value="solid">단색</option>
                   <option value="gradient">그라데이션</option>
+                  <option value="edge">사진 가장자리 색</option>
                 </select>
               </div>
             </div>
@@ -1109,7 +1110,8 @@ body.ui-mobile .blk textarea{font-size:16px}
               <div class="field" id="bgFadeSizeWrap" hidden><label>흐림 폭</label>
                 <div class="rangerow" style="margin:0"><input type="range" id="bgFadeSize" min="5" max="100" value="35"><output id="bgFadeSizeOut">35%</output></div></div>
             </div>
-            <p class="hint" style="margin-top:-2px">사진이 덮지 않은 곳과 흐리게 녹인 가장자리에 밑 바탕이 비칩니다. 전체 보이기와 함께 쓰면 잘 보입니다.</p>
+            <p class="hint" style="margin-top:-2px">사진이 덮지 않은 곳과 흐리게 녹인 가장자리에 밑 바탕이 비칩니다. 전체 보이기와 함께 쓰면 잘 보입니다.<br>
+            · <b>사진 가장자리 색</b> — 빈 곳을 맞닿은 변에서 가장 많이 나오는 한 색으로 늘려 채웁니다.</p>
           </div>
           <div class="rangerow"><span class="lbl">배경 덮개</span><input type="range" id="tint" min="-60" max="60" value="0"><output id="tintOut">0</output></div>
           </div>
@@ -2843,6 +2845,10 @@ function renderCanvas(){
       }
     });
   });
+  if (state.bgKind === 'image' && state.bgImage && state.bgUnder === 'edge'){
+    ensureBgEdge();
+    pages.forEach(pp => paintEdgeUnder(pp.page));
+  }
   paintPageMarkers(pageOf, pages.length);
   applyView();
   if (zoomAuto) fitZoom(); else applyZoom();
@@ -3911,6 +3917,88 @@ function bgImageSrc(){
   bgFadeTimer = setTimeout(ensureBgFade, 200);
   return bgFadeCache.src === src && bgFadeCache.url ? bgFadeCache.url : src;
 }
+/* ---- 사진 가장자리 색으로 늘려 채우기 ----
+   사진이 남긴 빈 곳을, 그 빈 곳과 맞닿은 변의 색으로 채운다.
+   변마다 한 색이다: 그 변에 닿은 픽셀 중 가장 많이 나오는 색.
+   JPEG 잡티 때문에 똑같은 색은 드물므로 채널마다 16단계로 묶어 세고, 이긴 묶음의 평균을 쓴다. */
+let bgEdgeCache = {src:null, colors:null}, bgEdgeJob = null;
+async function edgeColors(src){
+  const img = await loadImg(src);
+  const k = Math.min(1, 400 / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.max(1, Math.round(img.naturalWidth * k)), h = Math.max(1, Math.round(img.naturalHeight * k));
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const g = cv.getContext('2d');
+  g.drawImage(img, 0, 0, w, h);
+  const d = g.getImageData(0, 0, w, h).data;
+  const band = Math.max(1, Math.round(Math.min(w, h) * .015));
+  const pick = (x0, y0, x1, y1) => {
+    const bins = new Map();
+    let best = null;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++){
+      const i = (y * w + x) * 4;
+      if (d[i + 3] < 128) continue;                 /* 투명한 곳은 색이 없다 */
+      const key = (d[i] >> 4) << 8 | (d[i + 1] >> 4) << 4 | (d[i + 2] >> 4);
+      let b = bins.get(key);
+      if (!b){ b = {n:0, r:0, g:0, b:0}; bins.set(key, b); }
+      b.n++; b.r += d[i]; b.g += d[i + 1]; b.b += d[i + 2];
+      if (!best || b.n > best.n) best = b;
+    }
+    if (!best) return null;
+    const hx = v => Math.round(v / best.n).toString(16).padStart(2, '0');
+    return '#' + hx(best.r) + hx(best.g) + hx(best.b);
+  };
+  return {w: img.naturalWidth, h: img.naturalHeight,
+    t: pick(0, 0, w, band), b: pick(0, h - band, w, h), l: pick(0, 0, band, h), r: pick(w - band, 0, w, h)};
+}
+function ensureBgEdge(){
+  const src = state.bgImage;
+  if (!src || state.bgUnder !== 'edge') return Promise.resolve(null);
+  if (bgEdgeCache.src === src) return Promise.resolve(bgEdgeCache.colors);
+  if (bgEdgeJob && bgEdgeJob.src === src) return bgEdgeJob.p;
+  const job = {src};
+  /* 흐리게 구운 사진은 가장자리가 투명하므로 원본에서 뽑는다 */
+  job.p = edgeColors(src).then(colors => {
+    if (bgEdgeJob === job){ bgEdgeCache = {src, colors}; bgEdgeJob = null; renderCanvas(); }
+    return colors;
+  }).catch(() => { if (bgEdgeJob === job) bgEdgeJob = null; return null; });
+  bgEdgeJob = job;
+  return job.p;
+}
+/* w×h 판에 사진을 앉혔을 때 어느 축이 비는지 보고, 그 축으로 두 변의 색을 늘린다.
+   가운데(사진 뒤)는 두 색을 부드럽게 잇는다 — 흐리게 녹인 가장자리로 비쳐도 자연스럽다 */
+function edgeLayer(w, h){
+  const c = bgEdgeCache.src === state.bgImage ? bgEdgeCache.colors : null;
+  const fit = state.bgFit || 'cover';
+  if (!c || fit === 'tile' || !w || !h) return null;
+  const r = fit === 'contain' ? Math.min(w / c.w, h / c.h) : Math.max(w / c.w, h / c.h);
+  const dw = c.w * r, dh = c.h * r;
+  const vertical = fit === 'contain' ? (h - dh) >= (w - dw) : (dh - h) <= (dw - w);
+  const len = vertical ? h : w, size = vertical ? dh : dw;
+  const a = clamp((len - size) / 2 / len, 0, 1), b = clamp(1 - a, 0, 1);
+  const fb = state.bgColor;
+  const c1 = (vertical ? c.t : c.l) || fb, c2 = (vertical ? c.b : c.r) || fb;
+  const pc = v => Math.round(v * 1000) / 10 + '%';
+  return {vertical, c1, c2, a, b,
+    css: 'linear-gradient(to ' + (vertical ? 'bottom' : 'right') + ',' + c1 + ' 0%,' + c1 + ' ' + pc(a) + ',' + c2 + ' ' + pc(b) + ',' + c2 + ' 100%)'};
+}
+function fillEdgeLayer(g, w, h, L){
+  const gr = L.vertical ? g.createLinearGradient(0, 0, 0, h) : g.createLinearGradient(0, 0, w, 0);
+  gr.addColorStop(0, L.c1); gr.addColorStop(L.a, L.c1); gr.addColorStop(L.b, L.c2); gr.addColorStop(1, L.c2);
+  g.fillStyle = gr;
+  g.fillRect(0, 0, w, h);
+}
+/* 판 크기는 배치가 끝나야 알 수 있으므로 다 그린 뒤에 얹는다 */
+function paintEdgeUnder(pg){
+  const host = pg.style.backgroundImage && pg.style.backgroundImage !== 'none' ? pg : pg.querySelector('.cbody');
+  if (!host || !host.style.backgroundImage || host.style.backgroundImage === 'none') return;
+  const L = edgeLayer(host.offsetWidth, host.offsetHeight);
+  if (!L) return;
+  host.style.backgroundImage = 'url(' + bgImageSrc() + '),' + L.css;
+  host.style.backgroundSize = (state.bgFit || 'cover') + ',100% 100%';
+  host.style.backgroundRepeat = 'no-repeat,no-repeat';
+  host.style.backgroundPosition = 'center,center';
+}
 async function processImage(src, opt){
   opt = opt || {};
   const img = await loadImg(src);
@@ -4100,7 +4188,7 @@ async function settleFades(){
     if (bk) runBlockFade(bk);
   });
   clearTimeout(bgFadeTimer);
-  await Promise.all([...fadeRuns, ensureBgFade()]);
+  await Promise.all([...fadeRuns, ensureBgFade(), ensureBgEdge()]);
 }
 /* 다시 그린 뒤 새 이미지가 읽히며 한 번 더 배치된다. 캡처 도중 그 일이 일어나면 떼어 낸 장을 찍게 된다 */
 async function imagesSettled(){
@@ -5162,6 +5250,7 @@ async function swapBgForCapture(pages, scale){
     g.imageSmoothingQuality = 'high';
     /* 이 층이 CSS 배경을 통째로 대신하므로 밑 그라데이션도 여기에 함께 굽는다 */
     if (underGrad) fillCssGradient(g, w, h, BG_GRAD_DEG, state.bgColor, state.bgColor2);
+    else if (state.bgUnder === 'edge'){ const L = edgeLayer(w, h); if (L) fillEdgeLayer(g, w, h, L); }
     if (fit === 'tile'){
       const tw = Math.max(1, Math.round(iw * scale)), th = Math.max(1, Math.round(ih * scale));
       for (let y = 0; y < h; y += th) for (let x = 0; x < w; x += tw) g.drawImage(img, x, y, tw, th);
