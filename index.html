@@ -83,6 +83,7 @@ body.panel-hidden .panel{visibility:hidden;overflow:hidden;min-width:0;border-ri
 .eyebrow::before{content:'';flex:0 0 auto;width:4px;height:15px;border-radius:99px;background:var(--accent-line)}
 .eyebrow::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--accent-line),transparent)}
 .hint{font-size:11.5px;line-height:1.6;color:var(--muted);margin:-4px 2px 12px}
+.hint code{overflow-wrap:anywhere}
 .hint code{background:#E2F0FA;border-radius:4px;padding:1px 5px;font-size:11px;color:var(--accent-text)}
 .pane-lead{margin:0 2px 12px}
 /* 설정 묶음: 접힌 채로 제목과 한두 줄 설명만, 펼치면 세부 설정 */
@@ -807,6 +808,7 @@ body.ui-mobile .blk textarea{font-size:16px}
   .blk-head select{flex:1 1 100%;order:9}
 }
 @container (max-width:250px){
+  .pane-scroll .btn.sm{padding:0 7px;font-size:11px}
   .grid2,.grid3{grid-template-columns:minmax(0,1fr)}
   .colorrow{grid-template-columns:repeat(2,minmax(0,1fr))}
   .imgopts .row2{grid-template-columns:minmax(0,1fr)}
@@ -1082,18 +1084,32 @@ body.ui-mobile .blk textarea{font-size:16px}
           <div id="bgImageWrap" hidden>
             <div class="field">
               <label>배경 이미지</label>
-              <div style="display:flex;gap:7px">
+              <div style="display:flex;gap:7px;flex-wrap:wrap">
                 <label class="filebtn" style="height:32px">이미지 고르기<input type="file" id="bgImage" accept="image/*" hidden></label>
                 <button class="btn sm" id="bgImageClear">지우기</button>
               </div>
             </div>
-            <div class="field"><label>채우기</label>
-              <select id="bgFit">
-                <option value="cover">꽉 채우기</option>
-                <option value="contain">전체 보이기</option>
-                <option value="tile">타일로 반복</option>
-              </select>
+            <div class="grid2">
+              <div class="field"><label>채우기</label>
+                <select id="bgFit">
+                  <option value="cover">꽉 채우기</option>
+                  <option value="contain">전체 보이기</option>
+                  <option value="tile">타일로 반복</option>
+                </select>
+              </div>
+              <div class="field"><label>사진 밑 바탕</label>
+                <select id="bgUnder">
+                  <option value="solid">단색</option>
+                  <option value="gradient">그라데이션</option>
+                </select>
+              </div>
             </div>
+            <div class="grid2">
+              <div class="field"><label>가장자리 흐리게</label><select id="bgFade"></select></div>
+              <div class="field" id="bgFadeSizeWrap" hidden><label>흐림 폭</label>
+                <div class="rangerow" style="margin:0"><input type="range" id="bgFadeSize" min="5" max="100" value="35"><output id="bgFadeSizeOut">35%</output></div></div>
+            </div>
+            <p class="hint" style="margin-top:-2px">사진이 덮지 않은 곳과 흐리게 녹인 가장자리에 밑 바탕이 비칩니다. 전체 보이기와 함께 쓰면 잘 보입니다.</p>
           </div>
           <div class="rangerow"><span class="lbl">배경 덮개</span><input type="range" id="tint" min="-60" max="60" value="0"><output id="tintOut">0</output></div>
           </div>
@@ -1672,7 +1688,7 @@ const DEFAULT_STATE = () => ({
   docTitleFont: '', docTitleDeco: 'rule', docTitleEyebrow: 'CHAPTER', docTitleLs: 16,
   stampText: '', stampPos: 'bl', stampColor: '#A5A5AA', stampSize: 11, stampFont: '',
   bgKind: 'solid', bgColor: '#F1F1EF', bgColor2: '#DCE6EF', bgImage: null,
-  bgFit: 'cover', tint: 0,
+  bgFit: 'cover', bgUnder: 'solid', bgFade: 'none', bgFadeSize: 35, tint: 0,
   bgPattern: 'none', bgPatColor: '#FFFFFF', bgPatSize: 26, bgPatOpacity: 35, bgPatSymbol: '★',
   font: "'Pretendard',sans-serif", fontSize: 16, lineHeight: 1.65, letterSpace: 0, pgap: 42, indent: 0,
   padX: 30, padY: 30, gap: 15, bubbleRadius: 18, canvasRadius: 14,
@@ -2538,15 +2554,18 @@ function makePage(idx){
   page.style.width = CANVAS_W + 'px';
 
   const paintBg = el => {
+    /* 사진 밑 바탕을 그라데이션으로 두면, 사진이 덮지 않은 자리(전체 보이기의 여백, 흐리게 녹인 가장자리)에 그라데이션이 비친다 */
+    const underGrad = state.bgKind === 'image' && state.bgUnder === 'gradient';
     if (state.bgKind === 'none') el.style.background = 'transparent';
-    else if (state.bgKind === 'gradient') el.style.background = 'linear-gradient(160deg,' + state.bgColor + ' 0%,' + state.bgColor2 + ' 100%)';
+    else if (state.bgKind === 'gradient' || underGrad) el.style.background = bgGradCss();
     else el.style.background = state.bgColor;
     if (state.bgKind === 'image' && state.bgImage){
-      el.style.backgroundImage = 'url(' + state.bgImage + ')';
       const fit = state.bgFit || 'cover';
-      el.style.backgroundSize = fit === 'tile' ? 'auto' : fit;
-      el.style.backgroundRepeat = fit === 'tile' ? 'repeat' : 'no-repeat';
-      el.style.backgroundPosition = fit === 'tile' ? 'top left' : 'center';
+      const extra = underGrad ? ',' : '';
+      el.style.backgroundImage = 'url(' + bgImageSrc() + ')' + (underGrad ? ',' + bgGradCss() : '');
+      el.style.backgroundSize = (fit === 'tile' ? 'auto' : fit) + (extra && extra + '100% 100%');
+      el.style.backgroundRepeat = (fit === 'tile' ? 'repeat' : 'no-repeat') + (extra && extra + 'no-repeat');
+      el.style.backgroundPosition = (fit === 'tile' ? 'top left' : 'center') + (extra && extra + 'center');
     }
   };
   /* 배경 위에 덧씌우는 패턴 층 */
@@ -3192,6 +3211,12 @@ function imgOptsHtml(bk){
     '</div>' +
     '<div class="rangerow"><span class="lbl">크기</span><input type="range" min="10" max="100" value="' + w + '" data-iw="' + bk.id + '"><output>' + w + '%</output></div>' +
     '<div class="rangerow"><span class="lbl">투명도</span><input type="range" min="10" max="100" value="' + op + '" data-iop="' + bk.id + '"><output>' + op + '%</output></div>' +
+    '<div class="field" style="margin:6px 0 5px"><select data-ifade="' + bk.id + '" title="가장자리를 투명하게 녹여 바탕에 스며들게 합니다">' +
+      FADE_MODES.map(([v, l]) => '<option value="' + v + '"' + ((bk.imgFade || 'none') === v ? ' selected' : '') + '>가장자리 흐리게: ' + l + '</option>').join('') +
+    '</select></div>' +
+    ((bk.imgFade || 'none') !== 'none'
+      ? '<div class="rangerow"><span class="lbl">흐림 폭</span><input type="range" min="5" max="100" value="' + (Number(bk.imgFadeSize) || 35) +
+        '" data-ifs="' + bk.id + '"><output>' + (Number(bk.imgFadeSize) || 35) + '%</output></div>' : '') +
     '<div class="bleeds">' +
       '<label class="check"><input type="checkbox" data-ibx="' + bk.id + '"' + (bk.bleedX ? ' checked' : '') + '> 좌우 끝까지 채우기</label>' +
       '<label class="check"><input type="checkbox" data-ibt="' + bk.id + '"' + (bk.bleedT ? ' checked' : '') + '> 쪽 맨 위면 위쪽 끝까지</label>' +
@@ -3326,8 +3351,11 @@ function syncControls(){
   $('#bgColor').value = state.bgColor;
   $('#bgColor2').value = state.bgColor2;
   $('#bgFit').value = state.bgFit || 'cover';
-  $('#bgColor2Wrap').hidden = state.bgKind !== 'gradient';
-  $('#bgImageWrap').hidden = state.bgKind !== 'image';
+  $('#bgUnder').value = state.bgUnder || 'solid';
+  fillSelect($('#bgFade'), FADE_MODES, state.bgFade || 'none');
+  $('#bgFadeSize').value = Number(state.bgFadeSize) || 35;
+  { const o = $('#bgFadeSize').closest('.rangerow').querySelector('.numin, output'); if (o) o.value = (Number(state.bgFadeSize) || 35) + '%'; }
+  syncBgWraps();
   $('#bgSolid').hidden = state.bgKind === 'none';
   fillSelect($('#bgPattern'), BG_PATTERNS, state.bgPattern || 'none');
   $('#bgPatWrap').hidden = state.bgKind === 'none';
@@ -3536,6 +3564,14 @@ $('#blockList').addEventListener('input', e => {
       if (el.dataset.rz){ b.symSize = v; if (out) out.value = v + '%'; }
       renderCanvas();
     }
+  } else if (el.dataset.ifs){
+    const b = state.blocks.find(x => x.id === el.dataset.ifs);
+    if (b){
+      snapshotSoon();
+      b.imgFadeSize = Number(el.value);
+      const o = el.closest('.rangerow').querySelector('.numin, output'); if (o) o.value = el.value + '%';
+      scheduleBlockFade(b);
+    }
   } else if (el.dataset.iw || el.dataset.iop){
     const id = el.dataset.iw || el.dataset.iop;
     const b = state.blocks.find(x => x.id === id);
@@ -3612,6 +3648,9 @@ $('#blockList').addEventListener('change', e => {
       if (wasCircle || el.value === 'circle') reprocessBlockImage(b);
       else { renderBlocks(); renderCanvas(); }
     }
+  } else if (el.dataset.ifade){
+    const b = state.blocks.find(x => x.id === el.dataset.ifade);
+    if (b){ snapshot(); b.imgFade = el.value; reprocessBlockImage(b); }
   } else if (el.dataset.ial){
     const b = state.blocks.find(x => x.id === el.dataset.ial);
     if (b){ snapshot(); b.imgAlign = el.value; renderCanvas(); }
@@ -3801,6 +3840,77 @@ async function prepareImage(src, maxDim){
   if (Math.max(img.naturalWidth, img.naturalHeight) <= maxDim) return src;
   return processImage(src, {maxDim});
 }
+/* ---- 가장자리 흐리게 ----
+   사진 가장자리를 투명하게 녹여 바탕(단색·그라데이션)에 자연스럽게 스며들게 한다.
+   mask-image는 저장 이미지(html2canvas)에 안 나오므로 알파를 픽셀에 직접 굽는다. */
+const FADE_MODES = [['none','없음'],['b','아래로'],['t','위로'],['tb','위아래'],['lr','좌우'],['all','가장자리 전체']];
+/* 직선으로 녹이면 경계가 띠처럼 보인다. 부드러운 곡선으로 알파를 올린다 */
+const FADE_EASE = [0, .06, .22, .5, .78, .94, 1];
+async function fadeImage(src, mode, size){
+  if (!src || !mode || mode === 'none') return src;
+  const img = await loadImg(src);
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const g = cv.getContext('2d');
+  g.drawImage(img, 0, 0);
+  g.globalCompositeOperation = 'destination-in';
+  const f = clamp(Number(size) || 35, 5, 100) / 100;
+  const n = FADE_EASE.length - 1;
+  const mask = (horizontal, head, tail) => {
+    const span = Math.min(f, head && tail ? .5 : 1);
+    const gr = horizontal ? g.createLinearGradient(0, 0, w, 0) : g.createLinearGradient(0, 0, 0, h);
+    if (head) FADE_EASE.forEach((a, i) => gr.addColorStop(span * i / n, 'rgba(0,0,0,' + a + ')'));
+    else gr.addColorStop(0, '#000');
+    if (tail) FADE_EASE.forEach((a, i) => gr.addColorStop(1 - span + span * i / n, 'rgba(0,0,0,' + (1 - a) + ')'));
+    else gr.addColorStop(1, '#000');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, w, h);
+  };
+  /* 두 번 덮으면 알파가 곱해져 네 모서리가 함께 녹는다 */
+  if (mode === 'b')  mask(false, false, true);
+  if (mode === 't')  mask(false, true, false);
+  if (mode === 'tb' || mode === 'all') mask(false, true, true);
+  if (mode === 'lr' || mode === 'all') mask(true, true, true);
+  return cv.toDataURL('image/png');
+}
+/* CSS linear-gradient(각도)와 똑같은 선을 캔버스에 긋는다 — 저장 이미지와 화면을 맞추기 위함 */
+function fillCssGradient(g, w, h, deg, c1, c2){
+  const a = deg * Math.PI / 180;
+  const dx = Math.sin(a), dy = -Math.cos(a);
+  const len = Math.abs(w * dx) + Math.abs(h * dy);
+  const gr = g.createLinearGradient(w / 2 - dx * len / 2, h / 2 - dy * len / 2, w / 2 + dx * len / 2, h / 2 + dy * len / 2);
+  gr.addColorStop(0, c1); gr.addColorStop(1, c2);
+  g.fillStyle = gr;
+  g.fillRect(0, 0, w, h);
+}
+const BG_GRAD_DEG = 160;
+const bgGradCss = () => 'linear-gradient(' + BG_GRAD_DEG + 'deg,' + state.bgColor + ' 0%,' + state.bgColor2 + ' 100%)';
+/* 배경 사진은 원본을 state에 두고, 흐리게 구운 것은 메모리에만 둔다(설정을 바꿀 때마다 다시 굽는다) */
+let bgFadeCache = {src:null, key:'', url:null}, bgFadeJob = null, bgFadeTimer = null;
+const bgFadeKey = () => (state.bgFade || 'none') + '|' + (Number(state.bgFadeSize) || 35);
+function ensureBgFade(){
+  const src = state.bgImage, mode = state.bgFade || 'none', key = bgFadeKey();
+  if (!src || mode === 'none') return Promise.resolve(src);
+  if (bgFadeCache.src === src && bgFadeCache.key === key) return Promise.resolve(bgFadeCache.url);
+  if (bgFadeJob && bgFadeJob.src === src && bgFadeJob.key === key) return bgFadeJob.p;
+  const job = {src, key};
+  job.p = fadeImage(src, mode, state.bgFadeSize).then(url => {
+    if (bgFadeJob === job){ bgFadeCache = {src, key, url}; bgFadeJob = null; renderCanvas(); }
+    return url;
+  }).catch(() => { if (bgFadeJob === job) bgFadeJob = null; return src; });
+  bgFadeJob = job;
+  return job.p;
+}
+function bgImageSrc(){
+  const src = state.bgImage;
+  if (!src || (state.bgFade || 'none') === 'none') return src;
+  if (bgFadeCache.src === src && bgFadeCache.key === bgFadeKey()) return bgFadeCache.url;
+  /* 굽는 동안은 직전에 구운 것을(없으면 원본을) 보여 줘 깜박이지 않게 한다. 슬라이더를 끄는 동안은 몰아서 한 번만 */
+  clearTimeout(bgFadeTimer);
+  bgFadeTimer = setTimeout(ensureBgFade, 200);
+  return bgFadeCache.src === src && bgFadeCache.url ? bgFadeCache.url : src;
+}
 async function processImage(src, opt){
   opt = opt || {};
   const img = await loadImg(src);
@@ -3947,16 +4057,61 @@ async function applyCrop(bk){
   bk.imgCropped = await cropDataUrl(bk.imgOrig, c);
 }
 
-async function reprocessBlockImage(bk){
+/* 자르기 → 원형 → 흐리게 순으로 굽는다. 늦게 끝난 옛 작업이 새 결과를 덮지 않게 차례표를 둔다 */
+const reprocTurn = {};
+async function reprocessBlockImage(bk, opt){
+  const turn = (reprocTurn[bk.id] || 0) + 1;
+  reprocTurn[bk.id] = turn;
   if (!bk.imgOrig) bk.imgOrig = bk.image;
   try { await applyCrop(bk); } catch (e){ bk.imgCropped = null; }
   const base = bk.imgCropped || bk.imgOrig;
-  if (bk.imgShape !== 'circle') bk.image = base;
-  else {
-    try { bk.image = await processImage(base, {circle:true}); }
-    catch (e){ toast('이미지를 처리할 수 없습니다'); }
+  let out = base;
+  if (bk.imgShape === 'circle'){
+    try { out = await processImage(base, {circle:true}); }
+    catch (e){ toast('이미지를 처리할 수 없습니다'); out = bk.image; }
   }
-  renderBlocks(); renderCanvas();
+  if (bk.imgFade && bk.imgFade !== 'none'){
+    try { out = await fadeImage(out, bk.imgFade, bk.imgFadeSize); } catch (e){}
+  }
+  if (reprocTurn[bk.id] !== turn) return;
+  bk.image = out;
+  /* 슬라이더를 끄는 중에 목록을 다시 그리면 손잡이가 사라진다. 그때는 썸네일만 바꾼다 */
+  if (opt && opt.keepList){
+    const th = document.querySelector('.blk[data-id="' + bk.id + '"] .thumb');
+    if (th) th.src = out;
+    renderCanvas();
+  } else { renderBlocks(); renderCanvas(); }
+}
+/* 흐림 폭 슬라이더는 몰아서 한 번만 굽는다. 저장 직전에는 남은 것을 다 끝낸다 */
+const fadeTimers = {}, fadeRuns = new Set();
+function runBlockFade(bk){
+  const p = reprocessBlockImage(bk, {keepList:true});
+  fadeRuns.add(p); p.finally(() => fadeRuns.delete(p));
+  return p;
+}
+function scheduleBlockFade(bk){
+  clearTimeout(fadeTimers[bk.id]);
+  fadeTimers[bk.id] = setTimeout(() => { delete fadeTimers[bk.id]; runBlockFade(bk); }, 220);
+}
+async function settleFades(){
+  Object.keys(fadeTimers).forEach(id => {
+    clearTimeout(fadeTimers[id]); delete fadeTimers[id];
+    const bk = state.blocks.find(b => b.id === id);
+    if (bk) runBlockFade(bk);
+  });
+  clearTimeout(bgFadeTimer);
+  await Promise.all([...fadeRuns, ensureBgFade()]);
+}
+/* 다시 그린 뒤 새 이미지가 읽히며 한 번 더 배치된다. 캡처 도중 그 일이 일어나면 떼어 낸 장을 찍게 된다 */
+async function imagesSettled(){
+  for (let round = 0; round < 3; round++){
+    const pend = Array.from($('#pageStack').querySelectorAll('img')).filter(i => !i.complete);
+    if (!pend.length) return;
+    await Promise.all(pend.map(i => new Promise(r => {
+      i.addEventListener('load', r, {once:true}); i.addEventListener('error', r, {once:true});
+    })));
+    await new Promise(r => setTimeout(r, 0));
+  }
 }
 
 function readImage(file, cb){
@@ -4370,10 +4525,23 @@ $('#stampSize').addEventListener('input', e => { state.stampSize = clamp(Number(
 $('#stampFont').addEventListener('change', e => { snapshot(); state.stampFont = e.target.value; renderCanvas(); });
 $('#ratioW').addEventListener('input', e => { state.ratioW = Number(e.target.value) || 1000; renderCanvas(); });
 $('#ratioH').addEventListener('input', e => { state.ratioH = Number(e.target.value) || 1500; renderCanvas(); });
+function syncBgWraps(){
+  const underGrad = state.bgKind === 'image' && state.bgUnder === 'gradient';
+  $('#bgColor2Wrap').hidden = !(state.bgKind === 'gradient' || underGrad);
+  $('#bgImageWrap').hidden = state.bgKind !== 'image';
+  $('#bgFadeSizeWrap').hidden = (state.bgFade || 'none') === 'none';
+}
 $('#bgKind').addEventListener('change', e => {
   snapshot(); state.bgKind = e.target.value;
-  $('#bgColor2Wrap').hidden = state.bgKind !== 'gradient';
-  $('#bgImageWrap').hidden = state.bgKind !== 'image';
+  syncBgWraps();
+  renderCanvas();
+});
+$('#bgUnder').addEventListener('change', e => { snapshot(); state.bgUnder = e.target.value; syncBgWraps(); renderCanvas(); });
+$('#bgFade').addEventListener('change', e => { snapshot(); state.bgFade = e.target.value; syncBgWraps(); renderCanvas(); });
+$('#bgFadeSize').addEventListener('input', e => {
+  snapshotSoon();
+  state.bgFadeSize = Number(e.target.value);
+  const o = e.target.closest('.rangerow').querySelector('.numin, output'); if (o) o.value = e.target.value + '%';
   renderCanvas();
 });
 $('#bubShape').addEventListener('change', e => { snapshot(); state.bubbleShape = e.target.value; renderCanvas(); });
@@ -4893,7 +5061,7 @@ function migrate(o){
 const STYLE_KEYS = ['mode','theme','textAlign','hideNames','alignedText','wrapQuote','nameSep','quoteOrn','markColor','markAlpha','marks','actionMode',
   'ratio','ratioW','ratioH','usePageNo','useDocTitle','useStamp','pageNo','pageNoPos','pageNoColor','pageNoSize',
   'docTitle','docTitleAlign','docTitleWhere','docTitleColor','docTitleSize','docTitleFont','docTitleDeco','docTitleEyebrow','docTitleLs',
-  'stampText','stampPos','stampColor','stampSize','stampFont','bgKind','bgColor','bgColor2','bgImage','bgFit','tint',
+  'stampText','stampPos','stampColor','stampSize','stampFont','bgKind','bgColor','bgColor2','bgImage','bgFit','bgUnder','bgFade','bgFadeSize','tint',
   'bgPattern','bgPatColor','bgPatSize','bgPatOpacity','bgPatSymbol','frame','frameColor','frameTitle','frameHtml','frameOnTop','frameEls','frameChoiceText','frameAsk','frameVar','frameText','frameImg',
   'font','fontSize','lineHeight','letterSpace','pgap','indent','padX','padY','gap','narrator',
   'bubbleWidth','bubblePad','bubbleShape','bubbleShadow','bubbleRadius','canvasRadius','exportW','exportMode','exportPages'];
@@ -4975,7 +5143,8 @@ async function swapBgForCapture(pages, scale){
   bgTooSmall = 0;
   if (state.bgKind !== 'image' || !state.bgImage) return null;
   let img;
-  try { img = await loadImg(state.bgImage); } catch(e){ return null; }
+  try { img = await loadImg(await ensureBgFade()); } catch(e){ return null; }
+  const underGrad = state.bgUnder === 'gradient';
   const fit = state.bgFit || 'cover';
   const saved = [];
   for (const pg of pages){
@@ -4991,6 +5160,8 @@ async function swapBgForCapture(pages, scale){
     const g = cv.getContext('2d');
     g.imageSmoothingEnabled = true;
     g.imageSmoothingQuality = 'high';
+    /* 이 층이 CSS 배경을 통째로 대신하므로 밑 그라데이션도 여기에 함께 굽는다 */
+    if (underGrad) fillCssGradient(g, w, h, BG_GRAD_DEG, state.bgColor, state.bgColor2);
     if (fit === 'tile'){
       const tw = Math.max(1, Math.round(iw * scale)), th = Math.max(1, Math.round(ih * scale));
       for (let y = 0; y < h; y += th) for (let x = 0; x < w; x += tw) g.drawImage(img, x, y, tw, th);
@@ -5020,6 +5191,8 @@ function restoreBg(saved){
   });
 }
 async function capturePages(){
+  await settleFades();
+  await imagesSettled();
   capturing = true;
   const stack = $('#pageStack');
   const sc = $('#stageScroll');
