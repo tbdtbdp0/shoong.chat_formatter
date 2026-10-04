@@ -67,6 +67,10 @@ body.panel-hidden .main{grid-template-columns:0 7px minmax(0,1fr)}
 body.panel-hidden .panel{visibility:hidden;overflow:hidden;min-width:0;border-right:none}
 .panel{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
 .tabs{display:flex;padding:0 12px;border-bottom:1px solid var(--line);gap:2px;flex:0 0 auto;min-width:0;max-width:100%}
+/* 편집기를 좁히면 탭이 넘친다 — 잘리지 않고 옆으로 밀리게 */
+.tabs{overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto}
 .tab{position:relative;padding:13px 11px 12px;white-space:nowrap;font-size:13.5px;font-weight:600;color:var(--muted)}
 .tab[aria-selected="true"]{color:var(--ink)}
 .tab[aria-selected="true"]::after{content:'';position:absolute;left:10px;right:10px;bottom:-1px;height:2px;background:var(--accent-line)}
@@ -83,6 +87,7 @@ body.panel-hidden .panel{visibility:hidden;overflow:hidden;min-width:0;border-ri
 .eyebrow::before{content:'';flex:0 0 auto;width:4px;height:15px;border-radius:99px;background:var(--accent-line)}
 .eyebrow::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--accent-line),transparent)}
 .hint{font-size:11.5px;line-height:1.6;color:var(--muted);margin:-4px 2px 12px}
+.hint code{overflow-wrap:anywhere}
 .hint code{background:#E2F0FA;border-radius:4px;padding:1px 5px;font-size:11px;color:var(--accent-text)}
 .pane-lead{margin:0 2px 12px}
 /* 설정 묶음: 접힌 채로 제목과 한두 줄 설명만, 펼치면 세부 설정 */
@@ -807,6 +812,7 @@ body.ui-mobile .blk textarea{font-size:16px}
   .blk-head select{flex:1 1 100%;order:9}
 }
 @container (max-width:250px){
+  .pane-scroll .btn.sm{padding:0 7px;font-size:11px}
   .grid2,.grid3{grid-template-columns:minmax(0,1fr)}
   .colorrow{grid-template-columns:repeat(2,minmax(0,1fr))}
   .imgopts .row2{grid-template-columns:minmax(0,1fr)}
@@ -820,6 +826,7 @@ body.ui-mobile .blk textarea{font-size:16px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:1080px){
   :root{--panel-w:340px}
+  .tab{padding-left:9px;padding-right:9px}
 }
 @media (max-width:820px){
   .top-actions{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
@@ -837,8 +844,8 @@ body.ui-mobile .blk textarea{font-size:16px}
       <button class="btn ghost sm" id="btnCollapse">편집기 접기</button>
       <button class="btn ghost sm" id="btnUndo" data-tip="바로 전 편집 하나를 되돌립니다. (Ctrl+Z)">되돌리기</button>
       <button class="btn ghost sm" id="btnReset" data-tip="[비우고 시작]&#10;&#10;· 화자·대사·예시를 모두 지웁니다.&#10;· 스타일과 테두리는 기본값으로.&#10;· 한 번 더 확인하며, Ctrl+Z로 복구됩니다.">비우고 시작</button>
-      <label class="btn sm" data-tip="[설정 불러오기]&#10;&#10;.json에서 화자와 서식만 바꿔 끼웁니다.&#10;&#10;· 쓰던 대사는 그대로. 서식만 갈립니다.&#10;· 화자는 이름이 같으면 그대로, 다르면 순서대로 연결.&#10;· 옛 버전 파일도 열리며, 설정만 가져옵니다.">설정 불러오기<input type="file" id="fileJson" accept=".json" hidden></label>
-      <button class="btn sm" id="btnSaveJson" data-tip="[내 설정 저장]&#10;&#10;화자와 서식을 .json 하나로 내려받습니다.&#10;&#10;· 담기는 것: 화자, 테마, 표시 방식, 지문 규칙, 비율, 배경, 테두리, 폰트, 여백, 내보내기 크기&#10;· 안 담기는 것: 대사 내용, 붙인 이미지&#10;&#10;남에게 주면 같은 서식을 그대로 씁니다.">내 설정 저장</button>
+      <label class="btn sm" data-tip="[설정 불러오기]&#10;&#10;.json에서 화자와 서식만 바꿔 끼웁니다.&#10;&#10;· 쓰던 대사는 그대로. 서식만 갈립니다.&#10;· 화자는 이름이 같으면 그대로, 다르면 순서대로 연결.&#10;· 옛 버전 파일이나 작업 파일도 열리며, 설정만 가져옵니다.">설정 불러오기<input type="file" id="fileJson" accept=".json" hidden></label>
+      <button class="btn sm" id="btnSaveJson" data-tip="[내 설정 저장]&#10;&#10;화자와 서식을 .json 하나로 내려받습니다.&#10;&#10;· 담기는 것: 화자(프로필 사진 포함), 배경 이미지, 테마, 표시 방식, 지문 규칙, 비율, 테두리(사진 포함), 폰트, 여백, 내보내기 크기&#10;· 안 담기는 것: 대사, 이미지 블록&#10;&#10;남에게 주면 같은 서식을 그대로 씁니다.&#10;대사까지 통째로 남기려면 내보내기 탭의 「작업 파일 저장」.">내 설정 저장</button>
       <button class="btn sm" id="btnCopy">클립보드로 복사</button>
       <button class="btn accent" id="btnExport">이미지 저장</button>
     </div>
@@ -1082,18 +1089,34 @@ body.ui-mobile .blk textarea{font-size:16px}
           <div id="bgImageWrap" hidden>
             <div class="field">
               <label>배경 이미지</label>
-              <div style="display:flex;gap:7px">
+              <div style="display:flex;gap:7px;flex-wrap:wrap">
                 <label class="filebtn" style="height:32px">이미지 고르기<input type="file" id="bgImage" accept="image/*" hidden></label>
                 <button class="btn sm" id="bgImageClear">지우기</button>
               </div>
             </div>
-            <div class="field"><label>채우기</label>
-              <select id="bgFit">
-                <option value="cover">꽉 채우기</option>
-                <option value="contain">전체 보이기</option>
-                <option value="tile">타일로 반복</option>
-              </select>
+            <div class="grid2">
+              <div class="field"><label>채우기</label>
+                <select id="bgFit">
+                  <option value="cover">꽉 채우기</option>
+                  <option value="contain">전체 보이기</option>
+                  <option value="tile">타일로 반복</option>
+                </select>
+              </div>
+              <div class="field"><label>사진 밑 바탕</label>
+                <select id="bgUnder">
+                  <option value="solid">단색</option>
+                  <option value="gradient">그라데이션</option>
+                  <option value="edge">사진 가장자리 색</option>
+                </select>
+              </div>
             </div>
+            <div class="grid2">
+              <div class="field"><label>가장자리 흐리게</label><select id="bgFade"></select></div>
+              <div class="field" id="bgFadeSizeWrap" hidden><label>흐림 폭</label>
+                <div class="rangerow" style="margin:0"><input type="range" id="bgFadeSize" min="5" max="100" value="35"><output id="bgFadeSizeOut">35%</output></div></div>
+            </div>
+            <p class="hint" style="margin-top:-2px">사진이 덮지 않은 곳과 흐리게 녹인 가장자리에 밑 바탕이 비칩니다. 전체 보이기와 함께 쓰면 잘 보입니다.<br>
+            · <b>사진 가장자리 색</b> — 빈 곳을 맞닿은 변에서 가장 많이 나오는 한 색으로 늘려 채웁니다.</p>
           </div>
           <div class="rangerow"><span class="lbl">배경 덮개</span><input type="range" id="tint" min="-60" max="60" value="0"><output id="tintOut">0</output></div>
           </div>
@@ -1288,7 +1311,7 @@ body.ui-mobile .blk textarea{font-size:16px}
       <!-- 내보내기 : 판 크기와 저장 -->
       <section class="tabpane" id="pane-export">
         <div class="pane-scroll">
-          <p class="hint pane-lead">한 장의 비율과, 이미지로 저장하는 방식을 정합니다.</p>
+          <p class="hint pane-lead">한 장의 비율, 이미지로 저장하는 방식, 작업 파일 저장·열기.</p>
 
           <details class="sec" data-sec="ratio">
           <summary><span class="sec-t">판 비율</span><span class="sec-d">한 장의 가로:세로. 고정하면 넘치는 내용은 여러 장으로 나뉩니다.</span></summary>
@@ -1340,6 +1363,24 @@ body.ui-mobile .blk textarea{font-size:16px}
           · <b>PDF</b>: 한 파일로 저장. (단, 배경 투명화 불가 &amp; 파일 화질 저하 될 수 있음)</p>
           <p class="hint"><b>안드로이드 삼성 인터넷</b>: ZIP 파일 저장 권장. 여러장을 일반 PNG로 저장 시, 첫 장만 저장됨. 크롬&amp;구글은 정상작동.</p>
           <p class="hint">배경이 투명이면 PNG도 투명하게 저장됩니다.</p>
+          </div>
+          </details>
+          <details class="sec" data-sec="work">
+          <summary><span class="sec-t">작업 파일</span><span class="sec-d">대사·화자·사진·서식을 통째로 파일 하나에 담아 두고 다시 엽니다.</span></summary>
+          <div class="sec-body">
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
+            <button class="btn sm accent" id="btnSaveWork">작업 파일 저장</button>
+            <label class="btn sm">작업 파일 열기<input type="file" id="fileWork" accept=".json,application/json" hidden></label>
+          </div>
+          <p class="hint">· <b>작업 파일</b>: 대사·이미지 블록·화자·배경·서식 전부. 다른 기기에서 열어 이어서 작업할 수 있습니다.<br>
+          · <b>내 설정 저장</b>(상단): 화자와 서식만. 대사와 이미지 블록은 빠집니다.<br>
+          · 열면 지금 작업이 파일 내용으로 바뀝니다. 되돌리기(Ctrl+Z)로 복구 가능.</p>
+          <p class="hint"><b>임시저장 안내</b><br>
+          · 작업은 <b>이 기기, 이 브라우저에만</b> 자동 저장됩니다.<br>
+          · 방문 기록·사이트 데이터를 지우면 함께 지워집니다.<br>
+          · 아이폰·사파리는 <b>7일 넘게 들어오지 않으면</b> 지울 수 있습니다.<br>
+          · 시크릿 창은 닫으면 사라집니다.<br>
+          · 오래 둘 작업은 <b>작업 파일로 저장</b>해 두세요.</p>
           </div>
           </details>
         </div>
@@ -1672,7 +1713,7 @@ const DEFAULT_STATE = () => ({
   docTitleFont: '', docTitleDeco: 'rule', docTitleEyebrow: 'CHAPTER', docTitleLs: 16,
   stampText: '', stampPos: 'bl', stampColor: '#A5A5AA', stampSize: 11, stampFont: '',
   bgKind: 'solid', bgColor: '#F1F1EF', bgColor2: '#DCE6EF', bgImage: null,
-  bgFit: 'cover', tint: 0,
+  bgFit: 'cover', bgUnder: 'solid', bgFade: 'none', bgFadeSize: 35, tint: 0,
   bgPattern: 'none', bgPatColor: '#FFFFFF', bgPatSize: 26, bgPatOpacity: 35, bgPatSymbol: '★',
   font: "'Pretendard',sans-serif", fontSize: 16, lineHeight: 1.65, letterSpace: 0, pgap: 42, indent: 0,
   padX: 30, padY: 30, gap: 15, bubbleRadius: 18, canvasRadius: 14,
@@ -2538,15 +2579,18 @@ function makePage(idx){
   page.style.width = CANVAS_W + 'px';
 
   const paintBg = el => {
+    /* 사진 밑 바탕을 그라데이션으로 두면, 사진이 덮지 않은 자리(전체 보이기의 여백, 흐리게 녹인 가장자리)에 그라데이션이 비친다 */
+    const underGrad = state.bgKind === 'image' && state.bgUnder === 'gradient';
     if (state.bgKind === 'none') el.style.background = 'transparent';
-    else if (state.bgKind === 'gradient') el.style.background = 'linear-gradient(160deg,' + state.bgColor + ' 0%,' + state.bgColor2 + ' 100%)';
+    else if (state.bgKind === 'gradient' || underGrad) el.style.background = bgGradCss();
     else el.style.background = state.bgColor;
     if (state.bgKind === 'image' && state.bgImage){
-      el.style.backgroundImage = 'url(' + state.bgImage + ')';
       const fit = state.bgFit || 'cover';
-      el.style.backgroundSize = fit === 'tile' ? 'auto' : fit;
-      el.style.backgroundRepeat = fit === 'tile' ? 'repeat' : 'no-repeat';
-      el.style.backgroundPosition = fit === 'tile' ? 'top left' : 'center';
+      const extra = underGrad ? ',' : '';
+      el.style.backgroundImage = 'url(' + bgImageSrc() + ')' + (underGrad ? ',' + bgGradCss() : '');
+      el.style.backgroundSize = (fit === 'tile' ? 'auto' : fit) + (extra && extra + '100% 100%');
+      el.style.backgroundRepeat = (fit === 'tile' ? 'repeat' : 'no-repeat') + (extra && extra + 'no-repeat');
+      el.style.backgroundPosition = (fit === 'tile' ? 'top left' : 'center') + (extra && extra + 'center');
     }
   };
   /* 배경 위에 덧씌우는 패턴 층 */
@@ -2824,6 +2868,10 @@ function renderCanvas(){
       }
     });
   });
+  if (state.bgKind === 'image' && state.bgImage && state.bgUnder === 'edge'){
+    ensureBgEdge();
+    pages.forEach(pp => paintEdgeUnder(pp.page));
+  }
   paintPageMarkers(pageOf, pages.length);
   applyView();
   if (zoomAuto) fitZoom(); else applyZoom();
@@ -3192,6 +3240,12 @@ function imgOptsHtml(bk){
     '</div>' +
     '<div class="rangerow"><span class="lbl">크기</span><input type="range" min="10" max="100" value="' + w + '" data-iw="' + bk.id + '"><output>' + w + '%</output></div>' +
     '<div class="rangerow"><span class="lbl">투명도</span><input type="range" min="10" max="100" value="' + op + '" data-iop="' + bk.id + '"><output>' + op + '%</output></div>' +
+    '<div class="field" style="margin:6px 0 5px"><select data-ifade="' + bk.id + '" title="가장자리를 투명하게 녹여 바탕에 스며들게 합니다">' +
+      FADE_MODES.map(([v, l]) => '<option value="' + v + '"' + ((bk.imgFade || 'none') === v ? ' selected' : '') + '>가장자리 흐리게: ' + l + '</option>').join('') +
+    '</select></div>' +
+    ((bk.imgFade || 'none') !== 'none'
+      ? '<div class="rangerow"><span class="lbl">흐림 폭</span><input type="range" min="5" max="100" value="' + (Number(bk.imgFadeSize) || 35) +
+        '" data-ifs="' + bk.id + '"><output>' + (Number(bk.imgFadeSize) || 35) + '%</output></div>' : '') +
     '<div class="bleeds">' +
       '<label class="check"><input type="checkbox" data-ibx="' + bk.id + '"' + (bk.bleedX ? ' checked' : '') + '> 좌우 끝까지 채우기</label>' +
       '<label class="check"><input type="checkbox" data-ibt="' + bk.id + '"' + (bk.bleedT ? ' checked' : '') + '> 쪽 맨 위면 위쪽 끝까지</label>' +
@@ -3326,8 +3380,11 @@ function syncControls(){
   $('#bgColor').value = state.bgColor;
   $('#bgColor2').value = state.bgColor2;
   $('#bgFit').value = state.bgFit || 'cover';
-  $('#bgColor2Wrap').hidden = state.bgKind !== 'gradient';
-  $('#bgImageWrap').hidden = state.bgKind !== 'image';
+  $('#bgUnder').value = state.bgUnder || 'solid';
+  fillSelect($('#bgFade'), FADE_MODES, state.bgFade || 'none');
+  $('#bgFadeSize').value = Number(state.bgFadeSize) || 35;
+  { const o = $('#bgFadeSize').closest('.rangerow').querySelector('.numin, output'); if (o) o.value = (Number(state.bgFadeSize) || 35) + '%'; }
+  syncBgWraps();
   $('#bgSolid').hidden = state.bgKind === 'none';
   fillSelect($('#bgPattern'), BG_PATTERNS, state.bgPattern || 'none');
   $('#bgPatWrap').hidden = state.bgKind === 'none';
@@ -3536,6 +3593,14 @@ $('#blockList').addEventListener('input', e => {
       if (el.dataset.rz){ b.symSize = v; if (out) out.value = v + '%'; }
       renderCanvas();
     }
+  } else if (el.dataset.ifs){
+    const b = state.blocks.find(x => x.id === el.dataset.ifs);
+    if (b){
+      snapshotSoon();
+      b.imgFadeSize = Number(el.value);
+      const o = el.closest('.rangerow').querySelector('.numin, output'); if (o) o.value = el.value + '%';
+      scheduleBlockFade(b);
+    }
   } else if (el.dataset.iw || el.dataset.iop){
     const id = el.dataset.iw || el.dataset.iop;
     const b = state.blocks.find(x => x.id === id);
@@ -3612,6 +3677,9 @@ $('#blockList').addEventListener('change', e => {
       if (wasCircle || el.value === 'circle') reprocessBlockImage(b);
       else { renderBlocks(); renderCanvas(); }
     }
+  } else if (el.dataset.ifade){
+    const b = state.blocks.find(x => x.id === el.dataset.ifade);
+    if (b){ snapshot(); b.imgFade = el.value; reprocessBlockImage(b); }
   } else if (el.dataset.ial){
     const b = state.blocks.find(x => x.id === el.dataset.ial);
     if (b){ snapshot(); b.imgAlign = el.value; renderCanvas(); }
@@ -3801,6 +3869,159 @@ async function prepareImage(src, maxDim){
   if (Math.max(img.naturalWidth, img.naturalHeight) <= maxDim) return src;
   return processImage(src, {maxDim});
 }
+/* ---- 가장자리 흐리게 ----
+   사진 가장자리를 투명하게 녹여 바탕(단색·그라데이션)에 자연스럽게 스며들게 한다.
+   mask-image는 저장 이미지(html2canvas)에 안 나오므로 알파를 픽셀에 직접 굽는다. */
+const FADE_MODES = [['none','없음'],['b','아래로'],['t','위로'],['tb','위아래'],['lr','좌우'],['all','가장자리 전체']];
+/* 직선으로 녹이면 경계가 띠처럼 보인다. 부드러운 곡선으로 알파를 올린다 */
+const FADE_EASE = [0, .06, .22, .5, .78, .94, 1];
+async function fadeImage(src, mode, size){
+  if (!src || !mode || mode === 'none') return src;
+  const img = await loadImg(src);
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const g = cv.getContext('2d');
+  g.drawImage(img, 0, 0);
+  g.globalCompositeOperation = 'destination-in';
+  const f = clamp(Number(size) || 35, 5, 100) / 100;
+  const n = FADE_EASE.length - 1;
+  const mask = (horizontal, head, tail) => {
+    const span = Math.min(f, head && tail ? .5 : 1);
+    const gr = horizontal ? g.createLinearGradient(0, 0, w, 0) : g.createLinearGradient(0, 0, 0, h);
+    if (head) FADE_EASE.forEach((a, i) => gr.addColorStop(span * i / n, 'rgba(0,0,0,' + a + ')'));
+    else gr.addColorStop(0, '#000');
+    if (tail) FADE_EASE.forEach((a, i) => gr.addColorStop(1 - span + span * i / n, 'rgba(0,0,0,' + (1 - a) + ')'));
+    else gr.addColorStop(1, '#000');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, w, h);
+  };
+  /* 두 번 덮으면 알파가 곱해져 네 모서리가 함께 녹는다 */
+  if (mode === 'b')  mask(false, false, true);
+  if (mode === 't')  mask(false, true, false);
+  if (mode === 'tb' || mode === 'all') mask(false, true, true);
+  if (mode === 'lr' || mode === 'all') mask(true, true, true);
+  return cv.toDataURL('image/png');
+}
+/* CSS linear-gradient(각도)와 똑같은 선을 캔버스에 긋는다 — 저장 이미지와 화면을 맞추기 위함 */
+function fillCssGradient(g, w, h, deg, c1, c2){
+  const a = deg * Math.PI / 180;
+  const dx = Math.sin(a), dy = -Math.cos(a);
+  const len = Math.abs(w * dx) + Math.abs(h * dy);
+  const gr = g.createLinearGradient(w / 2 - dx * len / 2, h / 2 - dy * len / 2, w / 2 + dx * len / 2, h / 2 + dy * len / 2);
+  gr.addColorStop(0, c1); gr.addColorStop(1, c2);
+  g.fillStyle = gr;
+  g.fillRect(0, 0, w, h);
+}
+const BG_GRAD_DEG = 160;
+const bgGradCss = () => 'linear-gradient(' + BG_GRAD_DEG + 'deg,' + state.bgColor + ' 0%,' + state.bgColor2 + ' 100%)';
+/* 배경 사진은 원본을 state에 두고, 흐리게 구운 것은 메모리에만 둔다(설정을 바꿀 때마다 다시 굽는다) */
+let bgFadeCache = {src:null, key:'', url:null}, bgFadeJob = null, bgFadeTimer = null;
+const bgFadeKey = () => (state.bgFade || 'none') + '|' + (Number(state.bgFadeSize) || 35);
+function ensureBgFade(){
+  const src = state.bgImage, mode = state.bgFade || 'none', key = bgFadeKey();
+  if (!src || mode === 'none') return Promise.resolve(src);
+  if (bgFadeCache.src === src && bgFadeCache.key === key) return Promise.resolve(bgFadeCache.url);
+  if (bgFadeJob && bgFadeJob.src === src && bgFadeJob.key === key) return bgFadeJob.p;
+  const job = {src, key};
+  job.p = fadeImage(src, mode, state.bgFadeSize).then(url => {
+    if (bgFadeJob === job){ bgFadeCache = {src, key, url}; bgFadeJob = null; renderCanvas(); }
+    return url;
+  }).catch(() => { if (bgFadeJob === job) bgFadeJob = null; return src; });
+  bgFadeJob = job;
+  return job.p;
+}
+function bgImageSrc(){
+  const src = state.bgImage;
+  if (!src || (state.bgFade || 'none') === 'none') return src;
+  if (bgFadeCache.src === src && bgFadeCache.key === bgFadeKey()) return bgFadeCache.url;
+  /* 굽는 동안은 직전에 구운 것을(없으면 원본을) 보여 줘 깜박이지 않게 한다. 슬라이더를 끄는 동안은 몰아서 한 번만 */
+  clearTimeout(bgFadeTimer);
+  bgFadeTimer = setTimeout(ensureBgFade, 200);
+  return bgFadeCache.src === src && bgFadeCache.url ? bgFadeCache.url : src;
+}
+/* ---- 사진 가장자리 색으로 늘려 채우기 ----
+   사진이 남긴 빈 곳을, 그 빈 곳과 맞닿은 변의 색으로 채운다.
+   변마다 한 색이다: 그 변에 닿은 픽셀 중 가장 많이 나오는 색.
+   JPEG 잡티 때문에 똑같은 색은 드물므로 채널마다 16단계로 묶어 세고, 이긴 묶음의 평균을 쓴다. */
+let bgEdgeCache = {src:null, colors:null}, bgEdgeJob = null;
+async function edgeColors(src){
+  const img = await loadImg(src);
+  const k = Math.min(1, 400 / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.max(1, Math.round(img.naturalWidth * k)), h = Math.max(1, Math.round(img.naturalHeight * k));
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const g = cv.getContext('2d');
+  g.drawImage(img, 0, 0, w, h);
+  const d = g.getImageData(0, 0, w, h).data;
+  const band = Math.max(1, Math.round(Math.min(w, h) * .015));
+  const pick = (x0, y0, x1, y1) => {
+    const bins = new Map();
+    let best = null;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++){
+      const i = (y * w + x) * 4;
+      if (d[i + 3] < 128) continue;                 /* 투명한 곳은 색이 없다 */
+      const key = (d[i] >> 4) << 8 | (d[i + 1] >> 4) << 4 | (d[i + 2] >> 4);
+      let b = bins.get(key);
+      if (!b){ b = {n:0, r:0, g:0, b:0}; bins.set(key, b); }
+      b.n++; b.r += d[i]; b.g += d[i + 1]; b.b += d[i + 2];
+      if (!best || b.n > best.n) best = b;
+    }
+    if (!best) return null;
+    const hx = v => Math.round(v / best.n).toString(16).padStart(2, '0');
+    return '#' + hx(best.r) + hx(best.g) + hx(best.b);
+  };
+  return {w: img.naturalWidth, h: img.naturalHeight,
+    t: pick(0, 0, w, band), b: pick(0, h - band, w, h), l: pick(0, 0, band, h), r: pick(w - band, 0, w, h)};
+}
+function ensureBgEdge(){
+  const src = state.bgImage;
+  if (!src || state.bgUnder !== 'edge') return Promise.resolve(null);
+  if (bgEdgeCache.src === src) return Promise.resolve(bgEdgeCache.colors);
+  if (bgEdgeJob && bgEdgeJob.src === src) return bgEdgeJob.p;
+  const job = {src};
+  /* 흐리게 구운 사진은 가장자리가 투명하므로 원본에서 뽑는다 */
+  job.p = edgeColors(src).then(colors => {
+    if (bgEdgeJob === job){ bgEdgeCache = {src, colors}; bgEdgeJob = null; renderCanvas(); }
+    return colors;
+  }).catch(() => { if (bgEdgeJob === job) bgEdgeJob = null; return null; });
+  bgEdgeJob = job;
+  return job.p;
+}
+/* w×h 판에 사진을 앉혔을 때 어느 축이 비는지 보고, 그 축으로 두 변의 색을 늘린다.
+   가운데(사진 뒤)는 두 색을 부드럽게 잇는다 — 흐리게 녹인 가장자리로 비쳐도 자연스럽다 */
+function edgeLayer(w, h){
+  const c = bgEdgeCache.src === state.bgImage ? bgEdgeCache.colors : null;
+  const fit = state.bgFit || 'cover';
+  if (!c || fit === 'tile' || !w || !h) return null;
+  const r = fit === 'contain' ? Math.min(w / c.w, h / c.h) : Math.max(w / c.w, h / c.h);
+  const dw = c.w * r, dh = c.h * r;
+  const vertical = fit === 'contain' ? (h - dh) >= (w - dw) : (dh - h) <= (dw - w);
+  const len = vertical ? h : w, size = vertical ? dh : dw;
+  const a = clamp((len - size) / 2 / len, 0, 1), b = clamp(1 - a, 0, 1);
+  const fb = state.bgColor;
+  const c1 = (vertical ? c.t : c.l) || fb, c2 = (vertical ? c.b : c.r) || fb;
+  const pc = v => Math.round(v * 1000) / 10 + '%';
+  return {vertical, c1, c2, a, b,
+    css: 'linear-gradient(to ' + (vertical ? 'bottom' : 'right') + ',' + c1 + ' 0%,' + c1 + ' ' + pc(a) + ',' + c2 + ' ' + pc(b) + ',' + c2 + ' 100%)'};
+}
+function fillEdgeLayer(g, w, h, L){
+  const gr = L.vertical ? g.createLinearGradient(0, 0, 0, h) : g.createLinearGradient(0, 0, w, 0);
+  gr.addColorStop(0, L.c1); gr.addColorStop(L.a, L.c1); gr.addColorStop(L.b, L.c2); gr.addColorStop(1, L.c2);
+  g.fillStyle = gr;
+  g.fillRect(0, 0, w, h);
+}
+/* 판 크기는 배치가 끝나야 알 수 있으므로 다 그린 뒤에 얹는다 */
+function paintEdgeUnder(pg){
+  const host = pg.style.backgroundImage && pg.style.backgroundImage !== 'none' ? pg : pg.querySelector('.cbody');
+  if (!host || !host.style.backgroundImage || host.style.backgroundImage === 'none') return;
+  const L = edgeLayer(host.offsetWidth, host.offsetHeight);
+  if (!L) return;
+  host.style.backgroundImage = 'url(' + bgImageSrc() + '),' + L.css;
+  host.style.backgroundSize = (state.bgFit || 'cover') + ',100% 100%';
+  host.style.backgroundRepeat = 'no-repeat,no-repeat';
+  host.style.backgroundPosition = 'center,center';
+}
 async function processImage(src, opt){
   opt = opt || {};
   const img = await loadImg(src);
@@ -3947,16 +4168,62 @@ async function applyCrop(bk){
   bk.imgCropped = await cropDataUrl(bk.imgOrig, c);
 }
 
-async function reprocessBlockImage(bk){
+/* 자르기 → 원형 → 흐리게 순으로 굽는다. 늦게 끝난 옛 작업이 새 결과를 덮지 않게 차례표를 둔다 */
+const reprocTurn = {};
+async function reprocessBlockImage(bk, opt){
+  const turn = (reprocTurn[bk.id] || 0) + 1;
+  reprocTurn[bk.id] = turn;
   if (!bk.imgOrig) bk.imgOrig = bk.image;
   try { await applyCrop(bk); } catch (e){ bk.imgCropped = null; }
   const base = bk.imgCropped || bk.imgOrig;
-  if (bk.imgShape !== 'circle') bk.image = base;
-  else {
-    try { bk.image = await processImage(base, {circle:true}); }
-    catch (e){ toast('이미지를 처리할 수 없습니다'); }
+  let out = base;
+  if (bk.imgShape === 'circle'){
+    try { out = await processImage(base, {circle:true}); }
+    catch (e){ toast('이미지를 처리할 수 없습니다'); out = bk.image; }
   }
-  renderBlocks(); renderCanvas();
+  if (bk.imgFade && bk.imgFade !== 'none'){
+    try { out = await fadeImage(out, bk.imgFade, bk.imgFadeSize); } catch (e){}
+  }
+  if (reprocTurn[bk.id] !== turn) return;
+  bk.image = out;
+  if (opt && opt.quiet) return;
+  /* 슬라이더를 끄는 중에 목록을 다시 그리면 손잡이가 사라진다. 그때는 썸네일만 바꾼다 */
+  if (opt && opt.keepList){
+    const th = document.querySelector('.blk[data-id="' + bk.id + '"] .thumb');
+    if (th) th.src = out;
+    renderCanvas();
+  } else { renderBlocks(); renderCanvas(); }
+}
+/* 흐림 폭 슬라이더는 몰아서 한 번만 굽는다. 저장 직전에는 남은 것을 다 끝낸다 */
+const fadeTimers = {}, fadeRuns = new Set();
+function runBlockFade(bk){
+  const p = reprocessBlockImage(bk, {keepList:true});
+  fadeRuns.add(p); p.finally(() => fadeRuns.delete(p));
+  return p;
+}
+function scheduleBlockFade(bk){
+  clearTimeout(fadeTimers[bk.id]);
+  fadeTimers[bk.id] = setTimeout(() => { delete fadeTimers[bk.id]; runBlockFade(bk); }, 220);
+}
+async function settleFades(){
+  Object.keys(fadeTimers).forEach(id => {
+    clearTimeout(fadeTimers[id]); delete fadeTimers[id];
+    const bk = state.blocks.find(b => b.id === id);
+    if (bk) runBlockFade(bk);
+  });
+  clearTimeout(bgFadeTimer);
+  await Promise.all([...fadeRuns, ensureBgFade(), ensureBgEdge()]);
+}
+/* 다시 그린 뒤 새 이미지가 읽히며 한 번 더 배치된다. 캡처 도중 그 일이 일어나면 떼어 낸 장을 찍게 된다 */
+async function imagesSettled(){
+  for (let round = 0; round < 3; round++){
+    const pend = Array.from($('#pageStack').querySelectorAll('img')).filter(i => !i.complete);
+    if (!pend.length) return;
+    await Promise.all(pend.map(i => new Promise(r => {
+      i.addEventListener('load', r, {once:true}); i.addEventListener('error', r, {once:true});
+    })));
+    await new Promise(r => setTimeout(r, 0));
+  }
 }
 
 function readImage(file, cb){
@@ -4370,10 +4637,23 @@ $('#stampSize').addEventListener('input', e => { state.stampSize = clamp(Number(
 $('#stampFont').addEventListener('change', e => { snapshot(); state.stampFont = e.target.value; renderCanvas(); });
 $('#ratioW').addEventListener('input', e => { state.ratioW = Number(e.target.value) || 1000; renderCanvas(); });
 $('#ratioH').addEventListener('input', e => { state.ratioH = Number(e.target.value) || 1500; renderCanvas(); });
+function syncBgWraps(){
+  const underGrad = state.bgKind === 'image' && state.bgUnder === 'gradient';
+  $('#bgColor2Wrap').hidden = !(state.bgKind === 'gradient' || underGrad);
+  $('#bgImageWrap').hidden = state.bgKind !== 'image';
+  $('#bgFadeSizeWrap').hidden = (state.bgFade || 'none') === 'none';
+}
 $('#bgKind').addEventListener('change', e => {
   snapshot(); state.bgKind = e.target.value;
-  $('#bgColor2Wrap').hidden = state.bgKind !== 'gradient';
-  $('#bgImageWrap').hidden = state.bgKind !== 'image';
+  syncBgWraps();
+  renderCanvas();
+});
+$('#bgUnder').addEventListener('change', e => { snapshot(); state.bgUnder = e.target.value; syncBgWraps(); renderCanvas(); });
+$('#bgFade').addEventListener('change', e => { snapshot(); state.bgFade = e.target.value; syncBgWraps(); renderCanvas(); });
+$('#bgFadeSize').addEventListener('input', e => {
+  snapshotSoon();
+  state.bgFadeSize = Number(e.target.value);
+  const o = e.target.closest('.rangerow').querySelector('.numin, output'); if (o) o.value = e.target.value + '%';
   renderCanvas();
 });
 $('#bubShape').addEventListener('change', e => { snapshot(); state.bubbleShape = e.target.value; renderCanvas(); });
@@ -4893,8 +5173,8 @@ function migrate(o){
 const STYLE_KEYS = ['mode','theme','textAlign','hideNames','alignedText','wrapQuote','nameSep','quoteOrn','markColor','markAlpha','marks','actionMode',
   'ratio','ratioW','ratioH','usePageNo','useDocTitle','useStamp','pageNo','pageNoPos','pageNoColor','pageNoSize',
   'docTitle','docTitleAlign','docTitleWhere','docTitleColor','docTitleSize','docTitleFont','docTitleDeco','docTitleEyebrow','docTitleLs',
-  'stampText','stampPos','stampColor','stampSize','stampFont','bgKind','bgColor','bgColor2','bgImage','bgFit','tint',
-  'bgPattern','bgPatColor','bgPatSize','bgPatOpacity','bgPatSymbol','frame','frameColor','frameTitle','frameHtml','frameOnTop','frameEls','frameChoiceText','frameAsk','frameVar','frameText','frameImg',
+  'stampText','stampPos','stampColor','stampSize','stampFont','bgKind','bgColor','bgColor2','bgImage','bgFit','bgUnder','bgFade','bgFadeSize','tint',
+  'bgPattern','bgPatColor','bgPatSize','bgPatOpacity','bgPatSymbol','frame','frameColor','frameTitle','frameHtml','frameOnTop','frameEls','frameChoiceText','frameAsk','frameVar','frameText','frameImg','frameImgOrig','frameCrop',
   'font','fontSize','lineHeight','letterSpace','pgap','indent','padX','padY','gap','narrator',
   'bubbleWidth','bubblePad','bubbleShape','bubbleShadow','bubbleRadius','canvasRadius','exportW','exportMode','exportPages'];
 
@@ -4912,6 +5192,8 @@ function applyPreset(pre){
   const st = Object.assign({}, pre.style || {});
   if (st.padding !== undefined && st.padX === undefined){ st.padX = st.padding; st.padY = st.padding; }
   STYLE_KEYS.forEach(k => { if (st[k] !== undefined) state[k] = st[k]; });
+  /* 원본 없이 잘린 테두리 사진만 든 예전 파일: 지금 쓰던 원본과 섞이지 않게 비운다 */
+  if (st.frameImg !== undefined && st.frameImgOrig === undefined){ state.frameImgOrig = {}; state.frameCrop = {}; }
   state.marks = Object.assign({parenStar:true, star:true, paren:false, quote:false}, st.marks || {});
   state.narrator = migrateNarrSize(Object.assign(DEFAULT_STATE().narrator, st.narrator || {}));
   if (Array.isArray(pre.speakers) && pre.speakers.length){
@@ -4929,6 +5211,8 @@ function applyPreset(pre){
     });
     state.speakers = next;
   }
+  /* 작업 파일에서 서식만 가져올 때: 그 파일엔 자른 사진(테두리·프로필)의 원본만 있다. 표시용을 다시 만든다 */
+  rebuildDerivedImages();
 }
 $('#btnSaveJson').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(makePreset(), null, 2)], {type:'application/json'});
@@ -4949,7 +5233,7 @@ $('#fileJson').addEventListener('change', e => {
       let pre;
       if (raw && raw.kind === 'chat-formatter-preset') pre = raw;
       else {
-        const full = migrate(raw);
+        const full = migrate(raw && raw.kind === 'chat-formatter-work' ? raw.state : raw);
         if (!full || !Array.isArray(full.speakers)) throw new Error('bad');
         const style = {};
         STYLE_KEYS.forEach(k => { if (full[k] !== undefined) style[k] = full[k]; });
@@ -4966,6 +5250,51 @@ $('#fileJson').addEventListener('change', e => {
   r.readAsText(f);
 });
 
+/* ---------------- 작업 파일 ----------------
+   대사·사진·서식 전부를 파일 하나로. 사진은 원본만 담고, 자르기·원형·흐리게를 거친 표시용은
+   열 때 원본과 설정으로 다시 만든다(임시저장과 같은 방식). 그래서 화질은 그대로, 파일은 작다. */
+function adoptState(loaded){
+  state = Object.assign(DEFAULT_STATE(), loaded);
+  state.marks = Object.assign({parenStar:true, star:true, paren:false, quote:false}, loaded.marks || {});
+  if (loaded.padding !== undefined && loaded.padX === undefined){ state.padX = loaded.padding; state.padY = loaded.padding; }
+  state.narrator = migrateNarrSize(Object.assign(DEFAULT_STATE().narrator, loaded.narrator || {}));
+  if (state.frame === 'polaroid') migratePolaroidCaption();
+  rebuildDerivedImages();
+}
+$('#btnSaveWork').addEventListener('click', () => {
+  const photos = imageCandidates().length;
+  /* 큰 문자열을 한 번 더 풀었다 묶지 않게 겉만 이어 붙인다 */
+  const json = '{"kind":"chat-formatter-work","version":1,"savedAt":' + JSON.stringify(new Date().toISOString()) +
+    ',"state":' + savedJson(new Set()) + '}';
+  downloadBlob(new Blob([json], {type:'application/json'}), (state.exportName || '발췌') + '_작업.json');
+  toast('작업 파일을 저장했습니다' + (photos ? ' · 사진 ' + photos + '장 포함' : ''));
+});
+$('#fileWork').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    e.target.value = '';
+    let raw;
+    try { raw = JSON.parse(ev.target.result); } catch (err){ toast('이 파일은 읽을 수 없습니다'); return; }
+    /* 설정 파일을 골랐다면 서식만 적용한다 */
+    if (raw && raw.kind === 'chat-formatter-preset'){
+      snapshot(); applyPreset(raw); zoomAuto = true; renderAll();
+      toast('설정 파일입니다 · 서식만 적용했습니다');
+      return;
+    }
+    const loaded = raw && raw.kind === 'chat-formatter-work' ? raw.state : migrate(raw);
+    if (!loaded || !Array.isArray(loaded.blocks) || !Array.isArray(loaded.speakers)){ toast('작업 파일이 아닙니다'); return; }
+    if (state.blocks.length && !confirm('지금 작업을 이 파일 내용으로 바꿀까요?\n\n되돌리기(Ctrl+Z)로 복구할 수 있습니다.')) return;
+    snapshot();
+    adoptState(loaded);
+    zoomAuto = true;
+    renderAll();
+    toast('작업 파일을 열었습니다');
+  };
+  r.readAsText(f);
+});
+
 /* ---------------- export ---------------- */
 /* html2canvas 는 배경 이미지를 화면 크기(CSS px)로 한 번 그린 뒤 확대한다.
    그래서 내보내기 픽셀을 키워도 배경만 흐릿하다.
@@ -4975,7 +5304,8 @@ async function swapBgForCapture(pages, scale){
   bgTooSmall = 0;
   if (state.bgKind !== 'image' || !state.bgImage) return null;
   let img;
-  try { img = await loadImg(state.bgImage); } catch(e){ return null; }
+  try { img = await loadImg(await ensureBgFade()); } catch(e){ return null; }
+  const underGrad = state.bgUnder === 'gradient';
   const fit = state.bgFit || 'cover';
   const saved = [];
   for (const pg of pages){
@@ -4991,6 +5321,9 @@ async function swapBgForCapture(pages, scale){
     const g = cv.getContext('2d');
     g.imageSmoothingEnabled = true;
     g.imageSmoothingQuality = 'high';
+    /* 이 층이 CSS 배경을 통째로 대신하므로 밑 그라데이션도 여기에 함께 굽는다 */
+    if (underGrad) fillCssGradient(g, w, h, BG_GRAD_DEG, state.bgColor, state.bgColor2);
+    else if (state.bgUnder === 'edge'){ const L = edgeLayer(w, h); if (L) fillEdgeLayer(g, w, h, L); }
     if (fit === 'tile'){
       const tw = Math.max(1, Math.round(iw * scale)), th = Math.max(1, Math.round(ih * scale));
       for (let y = 0; y < h; y += th) for (let x = 0; x < w; x += tw) g.drawImage(img, x, y, tw, th);
@@ -5017,9 +5350,59 @@ function restoreBg(saved){
   saved.forEach(o => {
     if (o.layer && o.layer.parentNode) o.layer.parentNode.removeChild(o.layer);
     o.host.style.backgroundImage = o.image;
+    if (o.pos !== undefined) o.host.style.position = o.pos;
   });
 }
+/* 테두리 속 사진(메신저 프로필·앨범아트·달력 사진)도 CSS 배경이라 같은 길을 탄다.
+   저장 순간 최종 픽셀 크기로 잘라 둥근 모서리까지 구운 <img>로 바꿔 끼운다.
+   html2canvas의 CSS 배경 그리기(cover·둥근 모서리)에 기대지 않으므로 브라우저마다 결과가 같다. */
+async function swapFrameImgsForCapture(pages, scale){
+  const saved = [];
+  for (const pg of pages){
+    for (const el of pg.querySelectorAll('.favatar, .fart, .fcal-photo')){
+      const m = /url\((["']?)(.*)\1\)/.exec(el.style.backgroundImage || '');
+      if (!m) continue;
+      const w = Math.round(el.offsetWidth * scale), h = Math.round(el.offsetHeight * scale);
+      if (!w || !h) continue;
+      let img;
+      try { img = await loadImg(m[2]); } catch(e){ continue; }
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      if (!iw || !ih) continue;
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      const g = cv.getContext('2d');
+      g.imageSmoothingEnabled = true;
+      g.imageSmoothingQuality = 'high';
+      const rs = getComputedStyle(el).borderTopLeftRadius || '0';
+      let rad = parseFloat(rs) || 0;
+      rad = /%$/.test(rs) ? rad / 100 * Math.min(w, h) : rad * scale;
+      rad = Math.min(rad, w / 2, h / 2);
+      if (rad > 0){
+        g.beginPath();
+        g.moveTo(rad, 0);
+        g.arcTo(w, 0, w, h, rad); g.arcTo(w, h, 0, h, rad);
+        g.arcTo(0, h, 0, 0, rad); g.arcTo(0, 0, w, 0, rad);
+        g.closePath(); g.clip();
+      }
+      const r = Math.max(w / iw, h / ih), dw = iw * r, dh = ih * r;
+      g.drawImage(img, Math.round((w - dw) / 2), Math.round((h - dh) / 2), Math.round(dw), Math.round(dh));
+      const layer = document.createElement('img');
+      layer.className = 'capbg';
+      layer.src = cv.toDataURL('image/png');
+      layer.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none';
+      try { await layer.decode(); } catch(e){}
+      const pos = el.style.position;
+      saved.push({host: el, image: el.style.backgroundImage, layer, pos});
+      if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+      el.style.backgroundImage = 'none';
+      el.insertBefore(layer, el.firstChild);
+    }
+  }
+  return saved;
+}
 async function capturePages(){
+  await settleFades();
+  await imagesSettled();
   capturing = true;
   const stack = $('#pageStack');
   const sc = $('#stageScroll');
@@ -5033,15 +5416,17 @@ async function capturePages(){
   const scale = (Number(state.exportW) || 1080) / CANVAS_W;
   const pages = Array.from(stack.querySelectorAll('.page'));
   const shots = [];
-  let bgSaved = null;
+  let bgSaved = null, frSaved = null;
   try {
     bgSaved = await swapBgForCapture(pages, scale);
+    frSaved = await swapFrameImgsForCapture(pages, scale);
     const want = capturePages.only;
     for (let i = 0; i < pages.length; i++){
       if (want != null && i !== want) continue;
       shots.push(await html2canvas(pages[i], {scale, useCORS:true, backgroundColor:null, logging:false}));
     }
   } finally {
+    restoreBg(frSaved);
     restoreBg(bgSaved);
     capturePages.only = null;
     stack.style.transform = prevT;
@@ -5466,35 +5851,138 @@ document.addEventListener('keydown', e => {
 /* ---------------- autosave (복구용) ---------------- */
 const KEY = 'chatFormatter.v7';
 let saveTimer = null;
+/* 임시저장에는 원본 사진만 담는다. 자르기·원형·흐리게를 거친 표시용 사진은 불러올 때 다시 만든다.
+   예전에는 한 장이 원본 + 잘린 것 + 표시용으로 2~3벌 들어갔고(자른 것은 PNG라 원본의 3배),
+   사진 한두 장에 브라우저 한도(약 5MB)를 넘겨 '사진 전부 빼고 글만' 저장되곤 했다. */
+function savedJson(drop){
+  const fi = state.frameImg, fo = state.frameImgOrig || {};
+  return JSON.stringify(state, function(k, v){
+    if (k === 'imgCropped') return undefined;
+    if (k === 'image' && this.imgOrig) return undefined;
+    if (k === 'avatar' && this.avatarOrig) return undefined;
+    if (this === fi && fo[k]) return undefined;
+    /* 그래도 넘치면 고른 사진을 뺀다 */
+    if (drop.size){
+      if (k === 'bgImage' && drop.has('bg')) return null;
+      if ((k === 'imgOrig' || k === 'image') && this.id && drop.has('b:' + this.id)) return null;
+      if ((k === 'avatarOrig' || k === 'avatar') && this.id && drop.has('s:' + this.id)) return null;
+      if ((this === fi || this === fo) && drop.has('f:' + k)) return undefined;
+    }
+    return v;
+  });
+}
+/* 뺄 수 있는 사진들 — 큰 것부터 뺀다 */
+function imageCandidates(){
+  const L = [];
+  if (state.bgImage) L.push({id:'bg', n: state.bgImage.length});
+  state.blocks.forEach(b => { const v = b.imgOrig || b.image; if (v) L.push({id:'b:' + b.id, n: v.length}); });
+  state.speakers.forEach(sp => { const v = sp.avatarOrig || sp.avatar; if (v) L.push({id:'s:' + sp.id, n: v.length}); });
+  const fo = state.frameImgOrig || {}, fi = state.frameImg || {};
+  new Set(Object.keys(fo).concat(Object.keys(fi))).forEach(k => { const v = fo[k] || fi[k]; if (v) L.push({id:'f:' + k, n: v.length}); });
+  return L.sort((a, b) => b.n - a.n);
+}
+/* 임시저장은 IndexedDB에 둔다. localStorage는 한도가 약 5MB라 고화질 사진 두어 장에 넘쳤다.
+   IndexedDB는 기기 여유 공간만큼 쓸 수 있다. 못 쓰는 환경(일부 사생활 보호 창 등)에서만 localStorage로 물러난다. */
+const IDB_NAME = 'chatFormatter', IDB_STORE = 'save';
+let idbOpen = null, idbMoved = false;
+function idb(){
+  if (!idbOpen){
+    idbOpen = new Promise((res, rej) => {
+      if (!window.indexedDB) return rej(new Error('IndexedDB 없음'));
+      const rq = indexedDB.open(IDB_NAME, 1);
+      rq.onupgradeneeded = () => rq.result.createObjectStore(IDB_STORE);
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = () => rej(rq.error);
+    });
+    idbOpen.catch(() => {});
+  }
+  return idbOpen;
+}
+function idbGet(key){
+  return idb().then(db => new Promise((res, rej) => {
+    const rq = db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).get(key);
+    rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error);
+  }));
+}
+function idbPut(key, val){
+  return idb().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(val, key);
+    tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error);
+  }));
+}
+/* 열기가 멈춰 버리는 브라우저가 드물게 있다. 그때 앱이 안 뜨는 일이 없게 시간을 끊는다 */
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+let lastDropNote = '';
+function noteDropped(drop){
+  /* 빠진 사진이 달라졌을 때만 한 번 알린다 */
+  const note = Array.from(drop).sort().join(',');
+  if (note === lastDropNote) return;
+  lastDropNote = note;
+  if (drop.size) toast('브라우저 임시저장 공간이 모자라 사진 ' + drop.size + '장은 임시저장에서 뺐습니다 · 지금 화면에는 그대로 있습니다');
+}
+/* 물러난 경우: localStorage에 넣되, 넘치면 큰 사진부터 하나씩 뺀다 */
+function saveToLocal(){
+  const drop = new Set(), cands = imageCandidates();
+  for (let i = 0; i <= cands.length; i++){
+    try { localStorage.setItem(KEY, savedJson(drop)); break; }
+    catch(e){ if (i < cands.length) drop.add(cands[i].id); else return; }
+  }
+  noteDropped(drop);
+}
+function saveNow(){
+  clearTimeout(saveTimer); saveTimer = null;
+  let json;
+  try { json = savedJson(new Set()); } catch(e){ return; }
+  withTimeout(idbPut(KEY, json), 4000).then(() => {
+    /* 옮긴 뒤에는 localStorage의 옛 사본을 지워 다른 설정이 쓸 자리를 비운다 */
+    if (!idbMoved){ idbMoved = true; try { localStorage.removeItem(KEY); } catch(e){} }
+    noteDropped(new Set());
+  }).catch(saveToLocal);
+}
 function autosave(){
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); }
-    catch(e){
-      /* 고화질 원본 때문에 한도를 넘었을 때: 글은 살리고 이미지만 빼고 저장 */
-      try {
-        const lite = JSON.parse(JSON.stringify(state));
-        lite.bgImage = null;
-        lite.frameImg = {};
-        (lite.blocks || []).forEach(b => { b.image = null; b.imgOrig = null; });
-        localStorage.setItem(KEY, JSON.stringify(lite));
-      } catch(e2){}
-    }
-  }, 900);
+  saveTimer = setTimeout(saveNow, 900);
+}
+/* 편집 직후 창을 닫거나 앱을 넘겨도 마지막 수정이 남게, 가려지는 순간 바로 저장한다 */
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && saveTimer) saveNow(); });
+window.addEventListener('pagehide', () => { if (saveTimer) saveNow(); });
+/* 불러온 뒤, 원본만 있는 사진의 표시용을 다시 만든다. 먼저 원본을 보여 주고 다 되면 바꿔 끼운다 */
+async function rebuildDerivedImages(){
+  const jobs = [];
+  state.blocks.forEach(b => {
+    if (!b.imgOrig || b.image) return;
+    b.image = b.imgOrig;
+    const c = b.imgCrop, cropped = c && !(c.x <= 0 && c.y <= 0 && c.w >= 1 && c.h >= 1);
+    if (cropped || b.imgShape === 'circle' || (b.imgFade && b.imgFade !== 'none')) jobs.push(reprocessBlockImage(b, {quiet:true}));
+  });
+  state.speakers.forEach(sp => {
+    if (!sp.avatarOrig || sp.avatar) return;
+    sp.avatar = sp.avatarOrig;
+    if (sp.avatarCrop) jobs.push(cropDataUrl(sp.avatarOrig, sp.avatarCrop).then(u => { sp.avatar = u; }).catch(() => {}));
+  });
+  const fo = state.frameImgOrig || {};
+  if (!state.frameImg) state.frameImg = {};
+  Object.keys(fo).forEach(k => {
+    if (!fo[k] || state.frameImg[k]) return;
+    state.frameImg[k] = fo[k];
+    const rc = (state.frameCrop || {})[k];
+    if (rc) jobs.push(cropDataUrl(fo[k], rc).then(u => { state.frameImg[k] = u; }).catch(() => {}));
+  });
+  if (jobs.length){ await Promise.all(jobs); renderAll(); }
 }
 const _renderCanvas = renderCanvas;
 renderCanvas = function(){ _renderCanvas(); autosave(); };
 
-(function boot(){
+(async function boot(){
+  let saved = null;
+  try { saved = await withTimeout(idbGet(KEY), 1500); } catch(e){}
+  if (!saved){ try { saved = localStorage.getItem(KEY); } catch(e){} }
   try {
-    const saved = localStorage.getItem(KEY);
     if (saved){
       const loaded = JSON.parse(saved);
       if (loaded && Array.isArray(loaded.blocks) && loaded.blocks.length){
-        state = Object.assign(DEFAULT_STATE(), loaded);
-        state.marks = Object.assign({parenStar:true, star:true, paren:false, quote:false}, loaded.marks || {});
-        if (loaded.padding !== undefined && loaded.padX === undefined){ state.padX = loaded.padding; state.padY = loaded.padding; }
-        state.narrator = migrateNarrSize(Object.assign(DEFAULT_STATE().narrator, loaded.narrator || {}));
+        adoptState(loaded);
         setTimeout(() => toast('지난번 작업을 이어서 불러왔습니다'), 600);
       }
     }
