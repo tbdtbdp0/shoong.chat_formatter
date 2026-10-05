@@ -470,7 +470,7 @@ body.ui-mobile #btnViewMode{padding:0 8px}
 .page.ta-center.mode-mixed .stack,.page.ta-center.mode-mixed .cbody-col{align-items:center}
 .page.ta-right.mode-mixed .stack,.page.ta-right.mode-mixed .cbody-col{align-items:flex-end}
 .mode-line .crow.narr,.mode-quote .crow.narr{align-self:center!important;max-width:88%;text-align:center}
-/* 화자 지문 자동 기울임 끄기 — 나레이션은 자기 설정(.yi/.ni)을 따르고, _기울임_ 서식은 그대로 */
+/* 화자별 지문 자동 기울임 끄기 — _기울임_ 서식은 그대로 */
 .noactit .act,.noactit .out{font-style:normal}
 
 /* dividers */
@@ -960,8 +960,6 @@ body.ui-mobile .blk textarea{font-size:16px}
               <option value="split">줄을 바꿔 따로 나누기</option>
             </select>
           </div>
-          <label class="check" style="margin-top:12px"><input type="checkbox" id="optActItalic" checked> 화자 지문 자동 기울임</label>
-          <p class="hint">글줄·인용구·서적＋풍선에서 화자 지문을 저절로 기울입니다. 끄면 똑바로 세우고, <code>_기울임_</code>으로 직접 준 곳만 기울어집니다. 나레이션은 나레이션 설정을 따릅니다.</p>
           <p class="hint">예: <code>*창밖을 보며* 눈이 오려나.</code><br>
           · 이어 쓰기 — <i>창밖을 보며</i> 눈이 오려나.<br>
           · 나누기 — <i>창밖을 보며</i> ↵ 눈이 오려나. (두 문단)<br>
@@ -1702,7 +1700,6 @@ const DEFAULT_STATE = () => ({
   frameChoiceText: '그에게 다가간다\n그냥 지나친다',
   marks: { parenStar:true, star:true, paren:false, quote:false },
   actionMode: 'inline',
-  actionItalic: true,
   ratio: 'auto', ratioW: 2, ratioH: 3,
   usePageNo: false, useDocTitle: false, useStamp: false,
   pageNo: 'num', pageNoPos: 'bc', pageNoColor: '#8A8A8E', pageNoSize: 12,
@@ -2081,7 +2078,8 @@ function buildRow(bk){
   }
 
   const side = ['left','center','right','wide'].indexOf(sp.align) >= 0 ? sp.align : 'left';
-  row.className = 'crow ' + side + (bk.image && bk.imgAlign === 'full' ? ' imgfull' : '');
+  row.className = 'crow ' + side + (bk.image && bk.imgAlign === 'full' ? ' imgfull' : '') +
+    (sp.actItalic === false ? ' noactit' : '');
   row.style.fontSize = (spSize(sp) / 100) + 'em';
   paintBox();
   const nameColor = sp.nameColor || sp.text;
@@ -2559,8 +2557,7 @@ function makePage(idx){
   page.className = 'page mode-' + state.mode + ' ta-' + (state.textAlign || 'left') +
     ' shape-' + (state.bubbleShape || 'notch') +
     (state.bubbleShadow === false ? ' noshadow' : '') +
-    (state.hideNames ? ' hidenames' : '') + (state.alignedText ? ' aligned' : '') +
-    (state.actionItalic === false ? ' noactit' : '');
+    (state.hideNames ? ' hidenames' : '') + (state.alignedText ? ' aligned' : '');
   page.style.setProperty('--c-padx', state.padX + 'px');
   page.style.setProperty('--c-pady', state.padY + 'px');
   page.style.setProperty('--c-gap', state.gap + 'px');
@@ -3014,7 +3011,7 @@ function renderCast(){
       '<p class="hint" style="margin:8px 2px 0">화자 없는 블록이 쓰는 설정. 블록별로는 정렬만 따로.</p>' +
     '</div>';
   if (!state.speakers.length){
-    list.innerHTML = '<div class="empty">화자가 없습니다.<br>대사 블록은 나레이션으로 렌더링돼요.</div>';
+    list.insertAdjacentHTML('beforeend', '<div class="empty" style="padding:16px 18px">추가한 화자가 없습니다.<br>모든 블록이 위 나레이션 설정으로 렌더링돼요.</div>');
   }
   state.speakers.forEach(sp => {
     const card = document.createElement('div');
@@ -3060,7 +3057,8 @@ function renderCast(){
           '</select></div>' +
         '<div class="field" style="margin:0"><label>프로필 크기</label>' +
           '<div class="rangerow" style="margin:0"><input type="range" min="60" max="300" value="' + (sp.avatarSize || 100) + '" data-avsz="' + sp.id + '"><output>' + (sp.avatarSize || 100) + '%</output></div></div>' +
-      '</div>';
+      '</div>' +
+      '<label class="check" style="margin:9px 0 0" title="글줄·인용구·서적＋풍선에서 지문을 저절로 기울입니다. 꺼도 _기울임_ 서식은 남습니다."><input type="checkbox" data-spit="' + sp.id + '"' + (sp.actItalic === false ? '' : ' checked') + '> 지문 기울임</label>';
     list.appendChild(card);
   });
   upgradeRangeRows(list);
@@ -3294,7 +3292,6 @@ function syncControls(){
   $('#mkParen').checked = state.marks.paren;
   $('#mkQuote').checked = state.marks.quote;
   $('#actionMode').value = state.actionMode;
-  $('#optActItalic').checked = state.actionItalic !== false;
   $$('#alignSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === (state.textAlign || 'left') ? 'true' : 'false'));
   $('#modeHint').textContent = MODE_HINT[state.mode] || '';
   if (state.frame && state.frame !== 'none' && state.frame !== 'custom' && !FRAME_ELS[state.frame]) state.frame = 'none';
@@ -3484,6 +3481,11 @@ $('#castList').addEventListener('change', e => {
   if (el.dataset.nr === 'align'){ snapshot(); state.narrator.align = el.value; renderCanvas(); return; }
   if (el.dataset.nr === 'italic'){ snapshot(); state.narrator.italic = el.checked; renderCanvas(); return; }
   if (el.dataset.nr === 'box'){ snapshot(); state.narrator.noBubble = !el.checked; renderCanvas(); return; }
+  if (el.dataset.spit){
+    const sp = speakerOf(el.dataset.spit);
+    if (sp){ snapshot(); sp.actItalic = el.checked; renderCanvas(); }
+    return;
+  }
   if (el.dataset.avsh){
     const sp = speakerOf(el.dataset.avsh);
     if (sp){ snapshot(); sp.avatarShape = el.value; renderCanvas(); }
@@ -4444,7 +4446,6 @@ bindCheck('#mkParenStar', v => state.marks.parenStar = v);
 bindCheck('#mkStar', v => state.marks.star = v);
 bindCheck('#mkParen', v => state.marks.paren = v);
 bindCheck('#mkQuote', v => state.marks.quote = v);
-bindCheck('#optActItalic', v => state.actionItalic = v);
 $('#actionMode').addEventListener('change', e => { snapshot(); state.actionMode = e.target.value; renderCanvas(); });
 $('#alignSeg').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -5189,7 +5190,7 @@ function migrate(o){
       : {id:b.id || uid(), type:'line', speakerId:b.speakerId || '', text:b.text || '', image:b.image || null})
   };
 }
-const STYLE_KEYS = ['mode','theme','textAlign','hideNames','alignedText','wrapQuote','nameSep','quoteOrn','markColor','markAlpha','marks','actionMode','actionItalic',
+const STYLE_KEYS = ['mode','theme','textAlign','hideNames','alignedText','wrapQuote','nameSep','quoteOrn','markColor','markAlpha','marks','actionMode',
   'ratio','ratioW','ratioH','usePageNo','useDocTitle','useStamp','pageNo','pageNoPos','pageNoColor','pageNoSize',
   'docTitle','docTitleAlign','docTitleWhere','docTitleColor','docTitleSize','docTitleFont','docTitleDeco','docTitleEyebrow','docTitleLs',
   'stampText','stampPos','stampColor','stampSize','stampFont','bgKind','bgColor','bgColor2','bgImage','bgFit','bgUnder','bgFade','bgFadeSize','tint',
