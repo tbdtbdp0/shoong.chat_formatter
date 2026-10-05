@@ -683,17 +683,9 @@ body.ui-mobile #btnViewMode{padding:0 8px}
 .pgcol{position:relative;flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:var(--c-gap);overflow:hidden}
 /* 여백은 대사 영역이 아니라 각 쪽이 들고 있는다.
    그래야 삽화가 자기 쪽 안에서 종이 끝까지 뻗는다 — 칸 밖으로 나가면 잘린다. */
-.cbody[data-cols="2"] > .pgcol{padding:calc(var(--c-pady) + var(--c-fpy)) 0}
-.cbody[data-cols="2"] > .pgcol:first-child{padding-left:calc(var(--c-padx) + var(--c-fpx));padding-right:2.4em}
-.cbody[data-cols="2"] > .pgcol:last-child{padding-left:2.4em;padding-right:calc(var(--c-padx) + var(--c-fpx))}
-/* 펼친 면에서 좌우 채움은 종이 바깥 모서리에서 제본선까지.
-   한쪽 면 삽화가 제본선을 넘어가면 두 쪽에 걸쳐 버린다. */
-.cbody[data-cols="2"] > .pgcol:first-child .crow.imgrow.bleed-x{
-  width:calc(100% + var(--c-padx) + var(--c-fpx) + 2.4em);
-  margin-left:calc((var(--c-padx) + var(--c-fpx)) * -1);margin-right:-2.4em}
-.cbody[data-cols="2"] > .pgcol:last-child .crow.imgrow.bleed-x{
-  width:calc(100% + var(--c-padx) + var(--c-fpx) + 2.4em);
-  margin-left:-2.4em;margin-right:calc((var(--c-padx) + var(--c-fpx)) * -1)}
+.cbody[data-cols="2"] > .pgcol{padding:calc(var(--c-pady) + var(--c-fpy)) calc(var(--c-padx) + var(--c-fpx))}
+/* 제본선 쪽 여백도 바깥 여백과 같게 둔다. 두 쪽이 달라지면 가운데 정렬한 사진·글이 쪽 한가운데에서 비켜 선다.
+   좌우 채움 삽화는 일반 규칙(양쪽 여백만큼 넓히기)이 그대로 종이 바깥 모서리에서 제본선까지 맞는다. */
 
 /* 필름 스트립 — 구멍은 그라데이션 반복으로 뚫는다 */
 .ffilm{flex:0 0 auto;height:1.55em;
@@ -3240,8 +3232,8 @@ function imgOptsHtml(bk){
     '</div>' +
     '<div class="rangerow"><span class="lbl">크기</span><input type="range" min="10" max="100" value="' + w + '" data-iw="' + bk.id + '"><output>' + w + '%</output></div>' +
     '<div class="rangerow"><span class="lbl">투명도</span><input type="range" min="10" max="100" value="' + op + '" data-iop="' + bk.id + '"><output>' + op + '%</output></div>' +
-    '<div class="field" style="margin:6px 0 5px"><select data-ifade="' + bk.id + '" title="가장자리를 투명하게 녹여 바탕에 스며들게 합니다">' +
-      FADE_MODES.map(([v, l]) => '<option value="' + v + '"' + ((bk.imgFade || 'none') === v ? ' selected' : '') + '>가장자리 흐리게: ' + l + '</option>').join('') +
+    '<div class="rangerow"><span class="lbl">흐리게</span><select data-ifade="' + bk.id + '" style="flex:1 1 auto;min-width:0" title="고른 쪽 가장자리를 투명하게 녹여 바탕에 스며들게 합니다">' +
+      FADE_MODES.map(([v, l]) => '<option value="' + v + '"' + ((bk.imgFade || 'none') === v ? ' selected' : '') + '>' + l + '</option>').join('') +
     '</select></div>' +
     ((bk.imgFade || 'none') !== 'none'
       ? '<div class="rangerow"><span class="lbl">흐림 폭</span><input type="range" min="5" max="100" value="' + (Number(bk.imgFadeSize) || 35) +
@@ -3872,7 +3864,9 @@ async function prepareImage(src, maxDim){
 /* ---- 가장자리 흐리게 ----
    사진 가장자리를 투명하게 녹여 바탕(단색·그라데이션)에 자연스럽게 스며들게 한다.
    mask-image는 저장 이미지(html2canvas)에 안 나오므로 알파를 픽셀에 직접 굽는다. */
-const FADE_MODES = [['none','없음'],['b','아래로'],['t','위로'],['tb','위아래'],['lr','좌우'],['all','가장자리 전체']];
+/* 값(t·b·tb·lr·all)은 저장 파일과 맞아야 하므로 그대로 두고, 이름만 흐려지는 쪽으로 짧게 쓴다 */
+const FADE_MODES = [['none','없음'],['t','위'],['b','아래'],['l','왼쪽'],['r','오른쪽'],['tb','위아래'],['lr','좌우'],
+  ['tl','왼쪽 위'],['tr','오른쪽 위'],['bl','왼쪽 아래'],['br','오른쪽 아래'],['all','전체']];
 /* 직선으로 녹이면 경계가 띠처럼 보인다. 부드러운 곡선으로 알파를 올린다 */
 const FADE_EASE = [0, .06, .22, .5, .78, .94, 1];
 async function fadeImage(src, mode, size){
@@ -3886,9 +3880,10 @@ async function fadeImage(src, mode, size){
   g.globalCompositeOperation = 'destination-in';
   const f = clamp(Number(size) || 35, 5, 100) / 100;
   const n = FADE_EASE.length - 1;
-  const mask = (horizontal, head, tail) => {
+  /* (x0,y0)→(x1,y1) 선을 따라 앞(head)·뒤(tail) 끝을 녹인다 */
+  const maskLine = (x0, y0, x1, y1, head, tail) => {
     const span = Math.min(f, head && tail ? .5 : 1);
-    const gr = horizontal ? g.createLinearGradient(0, 0, w, 0) : g.createLinearGradient(0, 0, 0, h);
+    const gr = g.createLinearGradient(x0, y0, x1, y1);
     if (head) FADE_EASE.forEach((a, i) => gr.addColorStop(span * i / n, 'rgba(0,0,0,' + a + ')'));
     else gr.addColorStop(0, '#000');
     if (tail) FADE_EASE.forEach((a, i) => gr.addColorStop(1 - span + span * i / n, 'rgba(0,0,0,' + (1 - a) + ')'));
@@ -3896,11 +3891,27 @@ async function fadeImage(src, mode, size){
     g.fillStyle = gr;
     g.fillRect(0, 0, w, h);
   };
+  const mask = (horizontal, head, tail) =>
+    horizontal ? maskLine(0, 0, w, 0, head, tail) : maskLine(0, 0, 0, h, head, tail);
+  /* 대각선 — CSS의 'to bottom right'처럼, 같은 투명도 선이 나머지 두 모서리를 잇게 기울인다.
+     sx·sy는 녹일 모서리 쪽(+1 오른쪽·아래, -1 왼쪽·위) */
+  const corner = (sx, sy) => {
+    const n = Math.hypot(w, h);
+    const dx = sx * h / n, dy = sy * w / n;
+    const len = Math.abs(w * dx) + Math.abs(h * dy);
+    maskLine(w / 2 - dx * len / 2, h / 2 - dy * len / 2, w / 2 + dx * len / 2, h / 2 + dy * len / 2, false, true);
+  };
   /* 두 번 덮으면 알파가 곱해져 네 모서리가 함께 녹는다 */
   if (mode === 'b')  mask(false, false, true);
   if (mode === 't')  mask(false, true, false);
+  if (mode === 'r')  mask(true, false, true);
+  if (mode === 'l')  mask(true, true, false);
   if (mode === 'tb' || mode === 'all') mask(false, true, true);
   if (mode === 'lr' || mode === 'all') mask(true, true, true);
+  if (mode === 'tl') corner(-1, -1);
+  if (mode === 'tr') corner(1, -1);
+  if (mode === 'bl') corner(-1, 1);
+  if (mode === 'br') corner(1, 1);
   return cv.toDataURL('image/png');
 }
 /* CSS linear-gradient(각도)와 똑같은 선을 캔버스에 긋는다 — 저장 이미지와 화면을 맞추기 위함 */
