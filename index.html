@@ -401,9 +401,11 @@ body.ui-mobile #btnViewMode{padding:0 8px}
 .cimg.ia-full{width:100%!important;margin-left:0;margin-right:0}
 /* 이미지 전용 블록 */
 .crow.imgrow{display:block;align-self:stretch!important;max-width:100%!important;line-height:0}
-.crow.imgrow.ia-left{text-align:left}
-.crow.imgrow.ia-center{text-align:center}
-.crow.imgrow.ia-right{text-align:right}
+/* .page 를 붙여 판 전체 글 정렬(.page.ta-justify .crow 등)보다 앞서게 한다.
+   같은 우선순위면 뒤에 오는 글 정렬이 이겨, 양쪽·오른쪽 정렬에서 사진이 가운데로 안 간다 */
+.page .crow.imgrow.ia-left{text-align:left}
+.page .crow.imgrow.ia-center{text-align:center}
+.page .crow.imgrow.ia-right{text-align:right}
 .crow.imgrow .cimg{display:inline-block;margin:0}
 .crow.imgrow.ia-full .cimg{display:block;width:100%!important}
 /* 여백 너머로 흘려보내기 */
@@ -470,8 +472,6 @@ body.ui-mobile #btnViewMode{padding:0 8px}
 .page.ta-center.mode-mixed .stack,.page.ta-center.mode-mixed .cbody-col{align-items:center}
 .page.ta-right.mode-mixed .stack,.page.ta-right.mode-mixed .cbody-col{align-items:flex-end}
 .mode-line .crow.narr,.mode-quote .crow.narr{align-self:center!important;max-width:88%;text-align:center}
-/* 화자별 지문 자동 기울임 끄기 — _기울임_ 서식은 그대로 */
-.noactit .act,.noactit .out{font-style:normal}
 
 /* dividers */
 .cdiv{display:flex;align-items:center;justify-content:center;gap:.7em;margin:.2em auto;width:100%}
@@ -2078,8 +2078,7 @@ function buildRow(bk){
   }
 
   const side = ['left','center','right','wide'].indexOf(sp.align) >= 0 ? sp.align : 'left';
-  row.className = 'crow ' + side + (bk.image && bk.imgAlign === 'full' ? ' imgfull' : '') +
-    (sp.actItalic === false ? ' noactit' : '');
+  row.className = 'crow ' + side + (bk.image && bk.imgAlign === 'full' ? ' imgfull' : '');
   row.style.fontSize = (spSize(sp) / 100) + 'em';
   paintBox();
   const nameColor = sp.nameColor || sp.text;
@@ -3011,7 +3010,7 @@ function renderCast(){
       '<p class="hint" style="margin:8px 2px 0">화자 없는 블록이 쓰는 설정. 블록별로는 정렬만 따로.</p>' +
     '</div>';
   if (!state.speakers.length){
-    list.insertAdjacentHTML('beforeend', '<div class="empty" style="padding:16px 18px">추가한 화자가 없습니다.<br>모든 블록이 위 나레이션 설정으로 렌더링돼요.</div>');
+    list.innerHTML = '<div class="empty">화자가 없습니다.<br>대사 블록은 나레이션으로 렌더링돼요.</div>';
   }
   state.speakers.forEach(sp => {
     const card = document.createElement('div');
@@ -3057,8 +3056,7 @@ function renderCast(){
           '</select></div>' +
         '<div class="field" style="margin:0"><label>프로필 크기</label>' +
           '<div class="rangerow" style="margin:0"><input type="range" min="60" max="300" value="' + (sp.avatarSize || 100) + '" data-avsz="' + sp.id + '"><output>' + (sp.avatarSize || 100) + '%</output></div></div>' +
-      '</div>' +
-      '<label class="check" style="margin:9px 0 0" title="글줄·인용구·서적＋풍선에서 지문을 저절로 기울입니다. 꺼도 _기울임_ 서식은 남습니다."><input type="checkbox" data-spit="' + sp.id + '"' + (sp.actItalic === false ? '' : ' checked') + '> 지문 기울임</label>';
+      '</div>';
     list.appendChild(card);
   });
   upgradeRangeRows(list);
@@ -3481,11 +3479,6 @@ $('#castList').addEventListener('change', e => {
   if (el.dataset.nr === 'align'){ snapshot(); state.narrator.align = el.value; renderCanvas(); return; }
   if (el.dataset.nr === 'italic'){ snapshot(); state.narrator.italic = el.checked; renderCanvas(); return; }
   if (el.dataset.nr === 'box'){ snapshot(); state.narrator.noBubble = !el.checked; renderCanvas(); return; }
-  if (el.dataset.spit){
-    const sp = speakerOf(el.dataset.spit);
-    if (sp){ snapshot(); sp.actItalic = el.checked; renderCanvas(); }
-    return;
-  }
   if (el.dataset.avsh){
     const sp = speakerOf(el.dataset.avsh);
     if (sp){ snapshot(); sp.avatarShape = el.value; renderCanvas(); }
