@@ -717,6 +717,20 @@ body.ui-mobile #btnViewMode{padding:0 8px}
 #cropBox i[data-ch=ne]{right:-8px;top:-8px;cursor:nesw-resize}
 #cropBox i[data-ch=sw]{left:-8px;bottom:-8px;cursor:nesw-resize}
 #cropBox i[data-ch=se]{right:-8px;bottom:-8px;cursor:nwse-resize}
+/* 직접 규칙: 체크하면 열리는 칸. 한 규칙은 두 줄 카드 — 기호·종류 / 기호 표시·삭제 (좁은 편집기에서도 안 잘리게) */
+.mkbox{margin:-2px 0 8px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+.mkbox[hidden]{display:none}
+.mkbox .hint{margin:0 0 8px}
+.mkbox .hint code{white-space:nowrap}
+.mkrules{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.mkrow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) 70px;align-items:center;gap:6px;padding:7px;border:1px solid var(--line);border-radius:8px;background:var(--field);min-width:0}
+.mkrow input[type=text]{width:100%;min-width:0;height:30px;padding:0 6px;text-align:center;font-size:13px}
+.mkrow .mktil{color:var(--faint);font-size:12px}
+.mkrow select{width:100%;min-width:0;height:30px;font-size:12px;padding:0 22px 0 8px}
+.mkrow .mkshow{grid-column:1 / 4;display:flex;align-items:center;gap:5px;min-width:0;font-size:11.5px;color:var(--muted);white-space:nowrap;cursor:pointer}
+.mkrow .mkshow input{accent-color:var(--accent-line)}
+.mkrow .mini{justify-self:end}
+.mkrules .empty{font-size:11.5px;color:var(--muted);padding:10px;border:1px dashed var(--line);border-radius:8px;text-align:center;line-height:1.6}
 .pastebox{min-height:180px;max-height:44vh;overflow:auto;padding:10px 12px;border:1px solid var(--line);border-radius:9px;
   font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-word;background:#fff;color:var(--ink)}
 .pastebox:focus{outline:none;border-color:var(--accent-line)}
@@ -943,13 +957,21 @@ body.ui-mobile .blk textarea{font-size:16px}
           </details>
 
           <details class="sec" data-sec="marks">
-          <summary><span class="sec-t">지문 규칙</span><span class="sec-d">어떤 기호 안을 행동 지문으로 읽을지, 대사와 한 줄에 섞였을 때 나눌지.</span></summary>
+          <summary><span class="sec-t">지문 규칙</span><span class="sec-d">어떤 기호 안을 지문·대사로 읽을지(직접 규칙 포함), 한 줄에 섞였을 때 나눌지.</span></summary>
           <div class="sec-body">
           <p class="hint">맨 아래 괄호 규칙은 대사 속 일반 괄호까지 물들어 기본은 꺼짐.</p>
           <label class="check"><input type="checkbox" id="mkParenStar" checked> <code>*(괄호)*</code> 안을 지문으로</label>
           <label class="check"><input type="checkbox" id="mkStar" checked> <code>*별표*</code> 안을 지문으로</label>
           <label class="check"><input type="checkbox" id="mkQuote"> <code>"따옴표"</code> 밖을 전부 지문으로</label>
           <label class="check"><input type="checkbox" id="mkParen"> <code>(괄호)</code> 안을 지문으로</label>
+          <label class="check"><input type="checkbox" id="mkCustom"> 직접 규칙 쓰기</label>
+          <div class="mkbox" id="mkCustomBox" hidden>
+            <p class="hint">기호 사이를 <b>지문</b>·<b>대사</b> 중 무엇으로 읽을지 정합니다.<br>
+            · 같은 기호나 여러 글자도 됩니다. <code>~ ~</code> <code>&lt;&lt; &gt;&gt;</code><br>
+            · <b>대사</b> 규칙이 있으면 기호 밖 글은 지문이 됩니다.</p>
+            <div id="mkRules" class="mkrules"></div>
+            <button class="btn sm" id="mkAdd">+ 규칙 추가</button>
+          </div>
           <div class="field" style="margin-top:12px">
             <label>지문과 대사가 한 줄에 섞였을 때</label>
             <select id="actionMode">
@@ -1695,7 +1717,7 @@ const DEFAULT_STATE = () => ({
   frame: 'none', frameColor: '#E9E7EC', frameTitle: '', frameHtml: '', frameOnTop: false, frameEls: {},
   frameAsk: 'ask', frameVar: {}, frameText: {}, frameImg: {},
   frameChoiceText: '그에게 다가간다\n그냥 지나친다',
-  marks: { parenStar:true, star:true, paren:false, quote:false },
+  marks: { parenStar:true, star:true, paren:false, quote:false, rules:[] },
   actionMode: 'inline',
   ratio: 'auto', ratioW: 2, ratioH: 3,
   usePageNo: false, useDocTitle: false, useStamp: false,
@@ -1755,16 +1777,49 @@ function toast(msg){
 
 /* ---------------- inline parser ----------------
    한 번의 스캔으로 우선순위대로 마커를 잡는다.
-   ** 굵게 · == 형광 · _ 기울임 · *( )* / * * / ( ) 지문 · " " 대사
+   ** 굵게 · == 형광 · _ 기울임 · *( )* / * * / ( ) 지문 · " " 대사 · 직접 규칙
+   직접 규칙은 여는·닫는 기호 사이를 지문(action) 또는 대사(quote)로 읽는다.
 ------------------------------------------------- */
+const reEsc = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const MARK_DEFAULTS = () => ({parenStar:true, star:true, paren:false, quote:false, custom:false, rules:[]});
+/* 저장 파일·프리셋의 지문 규칙을 지금 모양으로 맞춘다. 직접 규칙이 없던 예전 파일은 빈 목록이 된다 */
+function normMarks(m){
+  const out = Object.assign(MARK_DEFAULTS(), m || {});
+  out.rules = (Array.isArray(out.rules) ? out.rules : [])
+    .filter(r => r && typeof r.open === 'string' && typeof r.close === 'string')
+    .map(r => ({open:r.open, close:r.close, kind:r.kind === 'talk' ? 'talk' : 'action', show:!!r.show}));
+  /* 켜짐 표시가 없는 파일(커췌기 파일 등)은 규칙이 있으면 켠다 */
+  out.custom = m && m.custom !== undefined ? !!m.custom : out.rules.length > 0;
+  delete out.rest;
+  return out;
+}
+function activeRules(marks){
+  if (!marks || !marks.custom) return [];
+  return (marks.rules || []).filter(r => r.open && r.close);
+}
+/* 기호 밖의 글을 지문으로 돌릴지: "따옴표" 규칙이나 대사 직접 규칙이 있을 때 */
+function invertsRest(marks){
+  return !!marks.quote || activeRules(marks).some(r => r.kind === 'talk');
+}
 function buildRules(marks, allowAction){
   const r = [
     {type:'bold',   re:/\*\*([^*\n]+?)\*\*/y},
     {type:'mark',   re:/==([^=\n]+?)==/y},
     {type:'size',   re:/\[\[(\d{2,3}:[^\]\n]+?)\]\]/y},
   ];
-  if (allowAction && marks.parenStar !== false) r.push({type:'action', re:/\*\(([^)\n]+?)\)\*/y});
-  if (allowAction && marks.star)  r.push({type:'action', re:/\*(?=\S)((?:[^*\n]|\*\*)*?[^\s*])\*(?!\*)/y});
+  /* 직접 규칙과 *( )* · * * 를 여는 기호가 긴 순서로 본다. (( )) 가 ( ) 보다, *( )* 가 * * 보다 먼저 잡혀야 한다.
+     길이가 같으면 직접 규칙이 먼저 */
+  const pre = [];
+  activeRules(marks).forEach(u => {
+    if (u.kind === 'action' && !allowAction) return;
+    const o = reEsc(u.open), c = reEsc(u.close);
+    /* 닫는 기호를 만나기 전까지 읽되, 안에 든 **굵게** 는 통째로 건너뛴다 (* * 규칙이 굵게에 끊기지 않게) */
+    pre.push({type:u.kind === 'talk' ? 'quote' : 'action', open:u.open, close:u.close, show:u.show, len:u.open.length,
+      re:new RegExp(o + '((?:\\*\\*[^*\\n]+?\\*\\*|(?!' + c + ')[^\\n])+)' + c, 'y')});
+  });
+  if (allowAction && marks.parenStar !== false) pre.push({type:'action', len:2, re:/\*\(([^)\n]+?)\)\*/y});
+  if (allowAction && marks.star)  pre.push({type:'action', len:1, re:/\*(?=\S)((?:[^*\n]|\*\*)*?[^\s*])\*(?!\*)/y});
+  pre.sort((a, b) => b.len - a.len).forEach(x => r.push(x));
   r.push({type:'italic', re:/_([^_\n]+?)_/y});
   if (allowAction && marks.paren) r.push({type:'action', re:/\(([^()\n]+?)\)/y});
   if (marks.quote) r.push({type:'quote', re:/[“"]([^”"\n]*?)[”"]/y});
@@ -1779,7 +1834,7 @@ function parseInline(src, marks, allowAction = true, depth = 0){
     for (const r of rules){
       r.re.lastIndex = i;
       const m = r.re.exec(src);
-      if (m && m.index === i){ hit = {type:r.type, m}; break; }
+      if (m && m.index === i){ hit = {type:r.type, m, rule:r}; break; }
     }
     if (hit && depth < 5){
       flush();
@@ -1794,14 +1849,16 @@ function parseInline(src, marks, allowAction = true, depth = 0){
         if (sm){ color = sm[1]; inner = sm[2]; }
       }
       const childAction = hit.type === 'action' ? false : allowAction;
-      out.push({type:hit.type, kids:parseInline(inner, marks, childAction, depth + 1), raw:hit.m[0], color:color});
+      const node = {type:hit.type, kids:parseInline(inner, marks, childAction, depth + 1), raw:hit.m[0], color:color};
+      if (hit.rule.open != null){ node.open = hit.rule.open; node.close = hit.rule.close; node.show = hit.rule.show; }
+      out.push(node);
       i += hit.m[0].length;
     } else { buf += src[i]; i++; }
   }
   flush();
   return out;
 }
-/* "따옴표 밖은 전부 지문" 모드 */
+/* "따옴표 밖은 전부 지문" 모드 (대사 직접 규칙도 같다) */
 function invertQuotes(nodes){
   return nodes.map(n => {
     if (n.type === 'quote') return n;
@@ -1812,6 +1869,10 @@ function invertQuotes(nodes){
 function isActionNode(n){ return n.type === 'action'; }
 function nodeText(n){
   if (n.type === 'text') return n.text;
+  if (n.open != null){
+    const inner = (n.kids || []).map(nodeText).join('');
+    return n.show ? n.open + inner + n.close : inner;
+  }
   if (n.type === 'quote' && n.raw) return n.raw;
   return (n.kids || []).map(nodeText).join('');
 }
@@ -1844,8 +1905,10 @@ function nodesToHtml(nodes, c, markBg){
       case 'mark':   return '<mark style="background:none;color:inherit">' + inner + '</mark>';
       case 'size':   return '<span style="font-size:' + clamp(Number(n.color) || 100, 50, 300) + '%;line-height:1.25">' + inner + '</span>';
       case 'action': return '<span class="act" style="color:' + c.action +
-        (c.actionFont ? ';font-family:' + c.actionFont : '') + '">' + inner + '</span>';
-      case 'quote':  return '<span class="dlg">' + (n.raw ? escHtml(n.raw[0]) : '"') + inner + (n.raw ? escHtml(n.raw[n.raw.length-1]) : '"') + '</span>';
+        (c.actionFont ? ';font-family:' + c.actionFont : '') + '">' + (n.show ? escHtml(n.open) : '') + inner + (n.show ? escHtml(n.close) : '') + '</span>';
+      case 'quote':
+        if (n.open != null) return '<span class="dlg">' + (n.show ? escHtml(n.open) : '') + inner + (n.show ? escHtml(n.close) : '') + '</span>';
+        return '<span class="dlg">' + (n.raw ? escHtml(n.raw[0]) : '"') + inner + (n.raw ? escHtml(n.raw[n.raw.length-1]) : '"') + '</span>';
       default:       return inner;
     }
   }).join('');
@@ -1859,7 +1922,7 @@ function buildParagraphs(text, colors, forceSplit){
   lines.forEach(line => {
     if (!line.trim()){ paras.push({kind:'space'}); return; }
     let nodes = parseInline(line, marks, true);
-    if (marks.quote) nodes = invertQuotes(nodes);
+    if (invertsRest(marks)) nodes = invertQuotes(nodes);
     /* 지문/대사 구간으로 묶기 */
     const runs = [];
     nodes.forEach(n => {
@@ -3286,6 +3349,7 @@ function syncControls(){
   $('#mkStar').checked = state.marks.star;
   $('#mkParen').checked = state.marks.paren;
   $('#mkQuote').checked = state.marks.quote;
+  renderMarkRules();
   $('#actionMode').value = state.actionMode;
   $$('#alignSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === (state.textAlign || 'left') ? 'true' : 'false'));
   $('#modeHint').textContent = MODE_HINT[state.mode] || '';
@@ -4436,6 +4500,58 @@ bindCheck('#mkParenStar', v => state.marks.parenStar = v);
 bindCheck('#mkStar', v => state.marks.star = v);
 bindCheck('#mkParen', v => state.marks.paren = v);
 bindCheck('#mkQuote', v => state.marks.quote = v);
+/* 직접 지문 규칙 */
+function renderMarkRules(){
+  const list = $('#mkRules');
+  const rules = state.marks.rules || (state.marks.rules = []);
+  $('#mkCustom').checked = !!state.marks.custom;
+  $('#mkCustomBox').hidden = !state.marks.custom;
+  if (!rules.length){
+    list.innerHTML = '<div class="empty">규칙이 없습니다. 아래에서 추가하세요.</div>';
+    return;
+  }
+  const opt = (v, l, cur) => '<option value="' + v + '"' + (cur === v ? ' selected' : '') + '>' + l + '</option>';
+  list.innerHTML = rules.map((r, i) =>
+    '<div class="mkrow">' +
+      '<input type="text" data-mko="' + i + '" value="' + escAttr(r.open) + '" placeholder="여는" title="여는 기호">' +
+      '<span class="mktil">~</span>' +
+      '<input type="text" data-mkc="' + i + '" value="' + escAttr(r.close) + '" placeholder="닫는" title="닫는 기호">' +
+      '<select data-mkk="' + i + '" title="기호 사이를 무엇으로 읽을지">' + opt('action', '지문', r.kind) + opt('talk', '대사', r.kind) + '</select>' +
+      '<label class="mkshow" title="끄면 그림에는 기호 안의 글만 남습니다"><input type="checkbox" data-mks="' + i + '"' + (r.show ? ' checked' : '') + '> 그림에 기호도 표시</label>' +
+      '<button class="mini danger" data-mkdel="' + i + '" title="규칙 삭제">✕</button>' +
+    '</div>').join('');
+}
+$('#mkCustom').addEventListener('change', e => {
+  snapshot();
+  state.marks.custom = e.target.checked;
+  const rules = state.marks.rules || (state.marks.rules = []);
+  /* 처음 켜면 빈 칸 하나를 바로 내어 준다 */
+  if (state.marks.custom && !rules.length) rules.push({open:'', close:'', kind:'action', show:false});
+  renderMarkRules(); renderCanvas();
+  if (state.marks.custom){ const ins = $$('#mkRules [data-mko]'); if (ins.length && !ins[ins.length - 1].value) ins[ins.length - 1].focus(); }
+});
+$('#mkAdd').addEventListener('click', () => {
+  snapshot();
+  (state.marks.rules || (state.marks.rules = [])).push({open:'', close:'', kind:'action', show:false});
+  renderMarkRules();
+  const ins = $$('#mkRules [data-mko]');
+  if (ins.length) ins[ins.length - 1].focus();
+});
+$('#mkRules').addEventListener('input', e => {
+  const t = e.target, rules = state.marks.rules;
+  if (t.dataset.mko != null){ snapshotSoon(); rules[t.dataset.mko].open = t.value; renderCanvas(); }
+  else if (t.dataset.mkc != null){ snapshotSoon(); rules[t.dataset.mkc].close = t.value; renderCanvas(); }
+});
+$('#mkRules').addEventListener('change', e => {
+  const t = e.target, rules = state.marks.rules;
+  if (t.dataset.mkk != null){ snapshot(); rules[t.dataset.mkk].kind = t.value; renderCanvas(); }
+  else if (t.dataset.mks != null){ snapshot(); rules[t.dataset.mks].show = t.checked; renderCanvas(); }
+});
+$('#mkRules').addEventListener('click', e => {
+  const b = e.target.closest('[data-mkdel]'); if (!b) return;
+  snapshot(); state.marks.rules.splice(Number(b.dataset.mkdel), 1);
+  renderMarkRules(); renderCanvas();
+});
 $('#actionMode').addEventListener('change', e => { snapshot(); state.actionMode = e.target.value; renderCanvas(); });
 $('#alignSeg').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -5163,7 +5279,7 @@ function migrate(o){
     mode: modeMap[o.renderStyle] || 'bubble',
     hideNames: !!o.hideSpeakerName,
     actionMode: o.actionSubstitute ? 'split' : 'inline',
-    marks:{parenStar:true, star:true, paren:false, quote:false},
+    marks:MARK_DEFAULTS(),
     ratio, ratioW:Number(o.customRatioW) || 1000, ratioH:Number(o.customRatioH) || 1500,
     bgKind: o.bgImage ? 'image' : 'solid',
     bgColor: o.bgColor || '#F1F1EF', bgImage: o.bgImage || null,
@@ -5204,7 +5320,7 @@ function applyPreset(pre){
   STYLE_KEYS.forEach(k => { if (st[k] !== undefined) state[k] = st[k]; });
   /* 원본 없이 잘린 테두리 사진만 든 예전 파일: 지금 쓰던 원본과 섞이지 않게 비운다 */
   if (st.frameImg !== undefined && st.frameImgOrig === undefined){ state.frameImgOrig = {}; state.frameCrop = {}; }
-  state.marks = Object.assign({parenStar:true, star:true, paren:false, quote:false}, st.marks || {});
+  state.marks = normMarks(st.marks);
   state.narrator = migrateNarrSize(Object.assign(DEFAULT_STATE().narrator, st.narrator || {}));
   if (Array.isArray(pre.speakers) && pre.speakers.length){
     const old = state.speakers.slice();
@@ -5265,7 +5381,7 @@ $('#fileJson').addEventListener('change', e => {
    열 때 원본과 설정으로 다시 만든다(임시저장과 같은 방식). 그래서 화질은 그대로, 파일은 작다. */
 function adoptState(loaded){
   state = Object.assign(DEFAULT_STATE(), loaded);
-  state.marks = Object.assign({parenStar:true, star:true, paren:false, quote:false}, loaded.marks || {});
+  state.marks = normMarks(loaded.marks);
   if (loaded.padding !== undefined && loaded.padX === undefined){ state.padX = loaded.padding; state.padY = loaded.padding; }
   state.narrator = migrateNarrSize(Object.assign(DEFAULT_STATE().narrator, loaded.narrator || {}));
   if (state.frame === 'polaroid') migratePolaroidCaption();
