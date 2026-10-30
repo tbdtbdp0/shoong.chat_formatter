@@ -411,7 +411,10 @@ body.ui-mobile #btnViewMode{padding:0 8px}
 /* 이미지 전용 블록 */
 .crow.htmlrow{display:block;align-self:stretch!important;max-width:100%!important;min-width:0;overflow-wrap:break-word}
 .crow.htmlrow img{max-width:100%}
-.blk.html textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.55}
+.html-modal{width:min(760px,100%)}
+#htmlEdit{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.55;min-height:46vh;resize:vertical;white-space:pre;overflow:auto}
+.htmlsum{display:flex;align-items:center;gap:8px;padding:0 12px 10px 38px;min-width:0}
+.htmlsum span{flex:1;min-width:0;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.ui-mobile .grid3.xcolor{grid-template-columns:repeat(3,minmax(0,1fr))}
 .crow.imgrow{display:block;align-self:stretch!important;max-width:100%!important;line-height:0}
 .crow.imgrow.ia-left{text-align:left}
@@ -1504,6 +1507,18 @@ body.ui-mobile .blk textarea,body.ui-mobile .blk .ed{font-size:16px}
   </div>
 </div>
 
+<div class="veil" id="htmlVeil">
+  <div class="modal html-modal">
+    <h2>HTML 블록 수정</h2>
+    <p class="sub">적은 HTML이 판에 그대로 그려집니다. 꾸밈은 <code>style="..."</code> 속성으로. 스크립트와 &lt;style&gt; 태그는 빠집니다.</p>
+    <textarea id="htmlEdit" spellcheck="false" placeholder="&lt;div style=&quot;text-align:center;color:#8A887F&quot;&gt;― 1화 ―&lt;/div&gt;"></textarea>
+    <div class="foot">
+      <button class="btn" id="htmlCancel">취소</button>
+      <button class="btn accent" id="htmlApply">적용</button>
+    </div>
+  </div>
+</div>
+
 <div class="veil" id="tuneVeil">
   <div class="modal">
     <h2>이 테두리에 맞춰 다른 설정도 바꿀까요?</h2>
@@ -2090,6 +2105,35 @@ function bubbleStyle(sp){
 
 /* HTML 블록 — 작업 파일로 남의 HTML 이 들어올 수 있으므로 스크립트·외부 문서·이벤트 속성은 걷어낸다.
    <style> 은 앱 화면 전체에 번지므로 뺀다. 꾸밈은 style="" 속성으로. */
+/* 편집기 목록에는 HTML을 펼치지 않고 한 줄 요약만 둔다 */
+function htmlSummary(src){
+  const t = String(src || '').trim();
+  if (!t) return '(비어 있음 — 수정을 눌러 HTML을 적으세요)';
+  const tmp = document.createElement('div');
+  tmp.innerHTML = safeHtml(t);
+  const text = (tmp.textContent || '').replace(/\s+/g, ' ').trim();
+  const lines = t.split('\n').length;
+  return (text || '(글자 없는 HTML)') + ' · ' + lines + '줄';
+}
+let htmlEditId = null;
+function openHtmlEdit(id){
+  const bk = state.blocks.find(b => b.id === id);
+  if (!bk) return;
+  htmlEditId = id;
+  $('#htmlEdit').value = bk.html || '';
+  $('#htmlVeil').classList.add('on');
+  setTimeout(() => $('#htmlEdit').focus(), 30);
+}
+function closeHtmlEdit(apply){
+  const bk = htmlEditId && state.blocks.find(b => b.id === htmlEditId);
+  if (apply && bk && bk.html !== $('#htmlEdit').value){
+    snapshot();
+    bk.html = $('#htmlEdit').value;
+    renderBlocks(); renderCanvas();
+  }
+  htmlEditId = null;
+  $('#htmlVeil').classList.remove('on');
+}
 function safeHtml(src){
   const doc = new DOMParser().parseFromString('<div>' + String(src) + '</div>', 'text/html');
   const root = doc.body.firstElementChild;
@@ -3324,8 +3368,8 @@ function renderBlocks(){
           '<button class="mini" data-dup="' + bk.id + '" title="복제">⧉</button>' +
           '<button class="mini danger" data-del="' + bk.id + '" title="삭제">✕</button>' +
         '</div>' +
-        '<textarea data-hx="' + bk.id + '" spellcheck="false" placeholder="&lt;div style=&quot;text-align:center;color:#8A887F&quot;&gt;― 1화 ―&lt;/div&gt;">' + escHtml(bk.html || '') + '</textarea>' +
-        '<p class="hint" style="margin:6px 12px 10px">적은 HTML이 판에 그대로 그려집니다. 꾸밈은 <code>style="..."</code> 속성으로. 스크립트와 &lt;style&gt; 태그는 빠집니다.</p>';
+        '<div class="htmlsum"><span>' + escHtml(htmlSummary(bk.html)) + '</span>' +
+          '<button class="btn sm" data-hedit="' + bk.id + '">수정</button></div>';
       list.appendChild(el);
       return;
     }
@@ -3831,10 +3875,7 @@ $('#blockList').addEventListener('input', e => {
     return;
   }
   const el = e.target;
-  if (el.dataset.hx){
-    const b = state.blocks.find(x => x.id === el.dataset.hx);
-    if (b){ snapshotSoon(); b.html = el.value; autosize(el); renderCanvas(); }
-  } else if (el.dataset.tx){
+  if (el.dataset.tx){
     const b = state.blocks.find(x => x.id === el.dataset.tx);
     if (b){
       /* 한 번에 이어 친 글은 되돌리기 한 번으로 — 치기 시작할 때의 상태를 남긴다 */
@@ -4048,7 +4089,8 @@ function insertAfter(id, type){
     : type === 'html' ? {id:uid(), type:'html', html:''} : {id:uid(), type:'pb'};
   state.blocks.splice(i + 1, 0, nb);
   renderBlocks(); renderCanvas();
-  const focusSel = type === 'line' ? '[data-tx="' + nb.id + '"]' : type === 'html' ? '[data-hx="' + nb.id + '"]' : '';
+  if (type === 'html'){ openHtmlEdit(nb.id); return; }
+  const focusSel = type === 'line' ? '[data-tx="' + nb.id + '"]' : '';
   if (focusSel){
     const el = $(focusSel);
     if (el){ el.focus(); el.scrollIntoView({block:'center', behavior:'smooth'}); }
@@ -4099,6 +4141,8 @@ $('#blockList').addEventListener('click', e => {
     toggleMark(mk.dataset.mark, withAlpha(state.markColor || '#FDE68A', state.markAlpha));
     return;
   }
+  const he = e.target.closest('[data-hedit]');
+  if (he){ openHtmlEdit(he.dataset.hedit); return; }
   const aa = e.target.closest('[data-addafter]');
   if (aa){ openAddMenu(aa, aa.dataset.addafter); return; }
   const strip = e.target.closest('[data-strip]');
@@ -4835,8 +4879,21 @@ $('#btnAddHtml').addEventListener('click', () => {
   const nb = {id:uid(), type:'html', html:''};
   state.blocks.push(nb);
   renderBlocks(); renderCanvas();
-  const ta = $('[data-hx="' + nb.id + '"]');
-  if (ta){ ta.focus(); ta.scrollIntoView({block:'center'}); }
+  const el = $('[data-hedit="' + nb.id + '"]');
+  if (el) el.scrollIntoView({block:'center'});
+  openHtmlEdit(nb.id);
+});
+$('#htmlApply').addEventListener('click', () => closeHtmlEdit(true));
+$('#htmlCancel').addEventListener('click', () => closeHtmlEdit(false));
+$('#htmlEdit').addEventListener('keydown', e => {
+  /* 들여쓰기용 Tab, 적용은 Ctrl+Enter */
+  if (e.key === 'Tab' && !e.shiftKey){
+    e.preventDefault();
+    const t = e.target, a = t.selectionStart, b = t.selectionEnd;
+    t.value = t.value.slice(0, a) + '  ' + t.value.slice(b);
+    t.selectionStart = t.selectionEnd = a + 2;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ e.preventDefault(); closeHtmlEdit(true); }
 });
 $('#btnAddBreak').addEventListener('click', () => {
   snapshot();
@@ -6008,6 +6065,38 @@ function restoreMarks(saved){
   saved.spans.forEach(o => { o.el.style.background = o.bg; });
   saved.hosts.forEach(h => { h.el.style.position = h.pos; h.el.style.zIndex = h.z; });
 }
+/* html2canvas 는 <details> 의 접힘을 모른다. 접힌 칸의 속 내용까지 그리고, 요약 줄의 ▶ 표시는 '1.' 로 그린다.
+   저장 순간에만 접힌 속 내용을 숨기고, ▶ 표시는 같은 색 글자로 바꿔 끼운다. 화면에서 접고 편 그대로 저장된다. */
+function foldDetailsForCapture(pages){
+  const saved = {styles: [], texts: [], added: []};
+  const hide = el => { saved.styles.push([el, el.style.cssText]); el.style.display = 'none'; };
+  pages.forEach(pg => pg.querySelectorAll('details').forEach(d => {
+    const sum = Array.from(d.children).find(c => c.tagName === 'SUMMARY');
+    if (!d.open){
+      Array.from(d.childNodes).forEach(n => {
+        if (n === sum) return;
+        if (n.nodeType === 1) hide(n);
+        else if (n.nodeType === 3 && n.nodeValue.trim()){ saved.texts.push([n, n.nodeValue]); n.nodeValue = ''; }
+      });
+    }
+    if (sum && getComputedStyle(sum).display === 'list-item'){
+      saved.styles.push([sum, sum.style.cssText]);
+      sum.style.display = 'block';
+      sum.style.listStyle = 'none';
+      const m = document.createElement('span');
+      m.textContent = d.open ? '\u25BE\u00A0' : '\u25B8\u00A0';
+      sum.insertBefore(m, sum.firstChild);
+      saved.added.push(m);
+    }
+  }));
+  return saved;
+}
+function unfoldDetails(saved){
+  if (!saved) return;
+  saved.added.forEach(m => m.remove());
+  saved.texts.forEach(([n, v]) => { n.nodeValue = v; });
+  saved.styles.forEach(([el, css]) => { el.style.cssText = css; });
+}
 async function capturePages(){
   await settleFades();
   await imagesSettled();
@@ -6024,10 +6113,11 @@ async function capturePages(){
   const scale = (Number(state.exportW) || 1080) / CANVAS_W;
   const pages = Array.from(stack.querySelectorAll('.page'));
   const shots = [];
-  let bgSaved = null, frSaved = null, mkSaved = null;
+  let bgSaved = null, frSaved = null, mkSaved = null, dtSaved = null;
   try {
     bgSaved = await swapBgForCapture(pages, scale);
     frSaved = await swapFrameImgsForCapture(pages, scale);
+    dtSaved = foldDetailsForCapture(pages);
     mkSaved = mergeMarksForCapture(pages);
     const want = capturePages.only;
     for (let i = 0; i < pages.length; i++){
@@ -6036,6 +6126,7 @@ async function capturePages(){
     }
   } finally {
     restoreMarks(mkSaved);
+    unfoldDetails(dtSaved);
     restoreBg(frSaved);
     restoreBg(bgSaved);
     capturePages.only = null;
@@ -6455,7 +6546,10 @@ document.addEventListener('keydown', e => {
     if (tag === 'TEXTAREA' || tag === 'INPUT') return;
     e.preventDefault(); undo();
   }
-  if (e.key === 'Escape'){ $('#pasteVeil').classList.remove('on'); $('#tuneVeil').classList.remove('on'); }
+  if (e.key === 'Escape'){
+    $('#pasteVeil').classList.remove('on'); $('#tuneVeil').classList.remove('on');
+    if ($('#htmlVeil').classList.contains('on')) closeHtmlEdit(false);
+  }
 });
 
 /* ---------------- autosave (복구용) ---------------- */
