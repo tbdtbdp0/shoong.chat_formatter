@@ -223,6 +223,10 @@ input[type=range]{width:100%;accent-color:var(--accent-line);height:18px}
 .fmt input[type=color]::-webkit-color-swatch-wrapper{padding:2px}
 .fmt input[type=color]::-webkit-color-swatch{border:none;border-radius:4px}
 .blk textarea{border:none;background:transparent;border-radius:0;padding:0 12px 10px 38px;min-height:44px;font-size:13px;line-height:1.65}
+.blk .ed{padding:2px 12px 10px 38px;min-height:44px;font-size:13px;line-height:1.65;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;outline:none;cursor:text;color:var(--ink)}
+.blk .ed:empty::before{content:attr(data-ph);color:var(--faint);pointer-events:none}
+.blk .ed mark{color:inherit;border-radius:2px}
+.blk:focus-within .ed{background:rgba(255,255,255,.35)}
 .blk textarea:focus{box-shadow:none;background:transparent}
 .blk-foot{display:flex;align-items:center;justify-content:space-between;gap:8px 6px;padding:7px 9px 8px 38px;border-top:1px solid var(--line2);flex-wrap:wrap;min-width:0}
 .blk-foot .left{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;flex:1 1 auto}
@@ -405,6 +409,10 @@ body.ui-mobile #btnViewMode{padding:0 8px}
 .crow .cimg.ia-right{margin-left:auto;margin-right:0}
 .cimg.ia-full{width:100%!important;margin-left:0;margin-right:0}
 /* 이미지 전용 블록 */
+.crow.htmlrow{display:block;align-self:stretch!important;max-width:100%!important;min-width:0;overflow-wrap:break-word}
+.crow.htmlrow img{max-width:100%}
+.blk.html textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.55}
+body.ui-mobile .grid3.xcolor{grid-template-columns:repeat(3,minmax(0,1fr))}
 .crow.imgrow{display:block;align-self:stretch!important;max-width:100%!important;line-height:0}
 .crow.imgrow.ia-left{text-align:left}
 .crow.imgrow.ia-center{text-align:center}
@@ -802,7 +810,7 @@ body.ui-mobile .app{overflow-x:hidden}
 body.ui-mobile .pane-bar{padding:9px 12px}
 body.ui-mobile .grid2,body.ui-mobile .grid3{grid-template-columns:1fr}
 body.ui-mobile .themes{grid-template-columns:repeat(2,1fr)}
-body.ui-mobile .blk textarea{font-size:16px}
+body.ui-mobile .blk textarea,body.ui-mobile .blk .ed{font-size:16px}
 /* 편집기가 좁아졌을 때의 규칙 — 기본 규칙 뒤에 두어야 덮어쓴다 */
 @container (max-width:330px){
   .grid3{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -812,7 +820,7 @@ body.ui-mobile .blk textarea{font-size:16px}
 /* 블록 안쪽은 왼쪽 38px을 비워 손잡이 줄에 맞춘다.
    폭이 줄면 그 자리가 아까우므로 들여쓰기를 줄이고 눈금 줄을 좁힌다. */
 @container (max-width:340px){
-  .fmt,.blk textarea,.blk-foot,.boxopts,.imgopts,.blk.rule .ruleopts{padding-left:14px}
+  .fmt,.blk textarea,.blk .ed,.blk-foot,.boxopts,.imgopts,.blk.rule .ruleopts{padding-left:14px}
   .boxopts .row2{grid-template-columns:minmax(0,1fr)}
   .rangerow{gap:7px}
   .rangerow .lbl{flex:0 0 52px;font-size:10.5px}
@@ -832,7 +840,7 @@ body.ui-mobile .blk textarea{font-size:16px}
   .rangerow .lbl,.boxopts .rangerow .lbl,.imgopts .rangerow .lbl,.rulegrid .rangerow .lbl{flex:1 1 100%;margin:0 0 2px}
   .rangerow input[type=range]{flex:1 1 60px}
   .rangerow .numin,.boxopts .rangerow .numin,.imgopts .rangerow .numin,.rulegrid .rangerow .numin{flex:0 0 58px;width:58px}
-  .fmt,.blk textarea,.blk-foot,.boxopts,.imgopts,.blk.rule .ruleopts{padding-left:10px}
+  .fmt,.blk textarea,.blk .ed,.blk-foot,.boxopts,.imgopts,.blk.rule .ruleopts{padding-left:10px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:1080px){
@@ -879,6 +887,7 @@ body.ui-mobile .blk textarea{font-size:16px}
           <button class="btn sm" id="btnAddLine">+ 대사</button>
           <button class="btn sm" id="btnAddImg">+ 이미지</button>
           <button class="btn sm" id="btnAddRule">+ 구분선</button>
+          <button class="btn sm" id="btnAddHtml" data-tip="HTML을 직접 적어 판에 그리는 블록입니다">+ HTML</button>
           <button class="btn sm" id="btnAddBreak" data-tip="여기서 다음 장으로 넘깁니다. 비율이 '내용에 맞춤'이어도 강제로 나뉩니다.">+ 페이지 나누기</button>
           <button class="btn sm ghost" id="btnFoldAll" hidden data-tip="장별로 접어 두면 긴 원고도 한눈에 훑을 수 있습니다.&#10;장 구분선을 눌러 하나씩 접을 수도 있습니다.">⊟ 모두 접기</button>
         </div>
@@ -1834,7 +1843,7 @@ function buildRules(marks, allowAction){
       re:new RegExp(o + '((?:\\*\\*[^*\\n]+?\\*\\*|(?!' + c + ')[^\\n])+)' + c, 'y')});
   });
   if (allowAction && marks.parenStar !== false) pre.push({type:'action', len:2, re:/\*\(([^)\n]+?)\)\*/y});
-  if (allowAction && marks.star)  pre.push({type:'action', len:1, re:/\*(?=\S)((?:[^*\n]|\*\*)*?[^\s*])\*(?!\*)/y});
+  if (allowAction && marks.star)  pre.push({type:'action', len:1, re:/\*(?=\S)((?:[^*\n]|\*\*)*?(?:[^\s*]|\*\*))\*(?!\*)/y});
   pre.sort((a, b) => b.len - a.len).forEach(x => r.push(x));
   r.push({type:'italic', re:/_([^_\n]+?)_/y});
   if (allowAction && marks.paren) r.push({type:'action', re:/\(([^()\n]+?)\)/y});
@@ -2077,6 +2086,23 @@ function bubbleStyle(sp){
   return 'background:' + bg + ';color:' + sp.text + ';--bub-bg:' + bg + (clear ? ';box-shadow:none' : '');
 }
 
+/* HTML 블록 — 작업 파일로 남의 HTML 이 들어올 수 있으므로 스크립트·외부 문서·이벤트 속성은 걷어낸다.
+   <style> 은 앱 화면 전체에 번지므로 뺀다. 꾸밈은 style="" 속성으로. */
+function safeHtml(src){
+  const doc = new DOMParser().parseFromString('<div>' + String(src) + '</div>', 'text/html');
+  const root = doc.body.firstElementChild;
+  if (!root) return '';
+  root.querySelectorAll('script,style,link,meta,base,iframe,frame,frameset,object,embed,form,input,button,textarea,select,noscript,template').forEach(n => n.remove());
+  root.querySelectorAll('*').forEach(el => {
+    Array.from(el.attributes).forEach(a => {
+      const n = a.name.toLowerCase(), v = a.value.replace(/[\s\u0000-\u001F]/g, '').toLowerCase();
+      if (n.startsWith('on')) el.removeAttribute(a.name);
+      else if (/^(href|src|xlink:href|action|formaction|srcset)$/.test(n) && /^(javascript|vbscript|data:text\/html)/.test(v)) el.removeAttribute(a.name);
+      else if (n === 'style' && /expression\(|javascript:/.test(v)) el.removeAttribute(a.name);
+    });
+  });
+  return root.innerHTML;
+}
 /* 화자별 추가 색상 — 정한 두 기호 사이의 글자를 글자색 문법({{#색:글자}})으로 감싸 그린다. 원문은 그대로 둔다 */
 function extraSym(sp){
   return {open: sp.extraOpen == null ? '(' : String(sp.extraOpen), close: sp.extraClose == null ? ')' : String(sp.extraClose)};
@@ -2112,6 +2138,12 @@ function buildRow(bk){
     im.style.width = (bk.imgW == null ? 100 : bk.imgW) + '%';
     im.style.opacity = (bk.imgOp == null ? 100 : bk.imgOp) / 100;
     row.appendChild(im);
+    return row;
+  }
+  if (bk.type === 'html'){
+    const row = document.createElement('div');
+    row.className = 'crow htmlrow';
+    row.innerHTML = safeHtml(bk.html || '');
     return row;
   }
   if (bk.type === 'pb'){
@@ -3124,6 +3156,12 @@ function setZoom(z){ zoom = snapZoom(z); zoomAuto = false; applyZoom(); }
 /* ---------------- panel: speakers ---------------- */
 function renderCast(){
   const list = $('#castList');
+  const sc = list.closest('.pane-scroll');
+  const keepTop = sc ? sc.scrollTop : 0;
+  renderCastInner(list);
+  if (sc && sc.scrollTop !== keepTop) sc.scrollTop = keepTop;
+}
+function renderCastInner(list){
   const nr = state.narrator || {};
   list.innerHTML =
     '<div class="card narr-card">' +
@@ -3190,13 +3228,6 @@ function renderCast(){
         '<div class="field" style="margin:0"><label>지문 글꼴</label>' +
           '<select data-spafont="' + sp.id + '">' + fontOptions(sp.actionFont || '', '기본 글꼴') + '</select></div>' +
       '</div>' +
-      '<label class="check" style="margin:10px 0 0" data-tip="두 기호 사이의 글자를 따로 정한 색으로 칠합니다.&#10;예: 외국어 대사 아래 (한국어 번역)만 다른 색으로.&#10;기호도 같은 색으로 칠합니다. 지문 규칙과 기호가 겹치면 이 설정이 먼저입니다.">' +
-        '<input type="checkbox" data-xon="' + sp.id + '"' + (sp.extraOn ? ' checked' : '') + '> 추가 색상 설정</label>' +
-      (sp.extraOn ? '<div class="grid3 xcolor" style="margin-top:7px">' +
-        '<div class="field" style="margin:0"><label>여는 기호</label><input type="text" maxlength="4" value="' + escAttr(extraSym(sp).open) + '" data-xo="' + sp.id + '"></div>' +
-        '<div class="field" style="margin:0"><label>닫는 기호</label><input type="text" maxlength="4" value="' + escAttr(extraSym(sp).close) + '" data-xc="' + sp.id + '"></div>' +
-        '<div class="field" style="margin:0"><label>글자색</label><input type="color" value="' + (sp.extraColor || '#8A8F99') + '" data-xcol="' + sp.id + '"></div>' +
-      '</div>' : '') +
       '<div class="grid2" style="margin-top:9px">' +
         '<div class="field" style="margin:0"><label>프로필 모양</label>' +
           '<select data-avsh="' + sp.id + '">' +
@@ -3205,6 +3236,13 @@ function renderCast(){
           '</select></div>' +
         '<div class="field" style="margin:0"><label>프로필 크기</label>' +
           '<div class="rangerow" style="margin:0"><input type="range" min="60" max="300" value="' + (sp.avatarSize || 100) + '" data-avsz="' + sp.id + '"><output>' + (sp.avatarSize || 100) + '%</output></div></div>' +
+      '</div>' +
+      '<label class="check" style="margin:10px 0 0" data-tip="두 기호 사이의 글자를 따로 정한 색으로 칠합니다.&#10;예: 외국어 대사 아래 (한국어 번역)만 다른 색으로.&#10;기호도 같은 색으로 칠합니다. 지문 규칙과 기호가 겹치면 이 설정이 먼저입니다.">' +
+        '<input type="checkbox" data-xon="' + sp.id + '"' + (sp.extraOn ? ' checked' : '') + '> 추가 색상 설정</label>' +
+      '<div class="grid3 xcolor" data-xbox="' + sp.id + '" style="margin-top:7px"' + (sp.extraOn ? '' : ' hidden') + '>' +
+        '<div class="field" style="margin:0"><label>여는 기호</label><input type="text" maxlength="4" value="' + escAttr(extraSym(sp).open) + '" data-xo="' + sp.id + '"></div>' +
+        '<div class="field" style="margin:0"><label>닫는 기호</label><input type="text" maxlength="4" value="' + escAttr(extraSym(sp).close) + '" data-xc="' + sp.id + '"></div>' +
+        '<div class="field" style="margin:0"><label>글자색</label><input type="color" value="' + (sp.extraColor || '#8A8F99') + '" data-xcol="' + sp.id + '"></div>' +
       '</div>';
     list.appendChild(card);
   });
@@ -3259,6 +3297,22 @@ function renderBlocks(){
           '<button class="mini danger" data-del="' + bk.id + '" title="삭제">✕</button>' +
         '</div>' +
         (bk.image ? imgOptsHtml(bk) : '');
+      list.appendChild(el);
+      return;
+    }
+    if (bk.type === 'html'){
+      el.className = 'blk html';
+      el.innerHTML =
+        '<div class="blk-head">' +
+          '<span class="grip" title="끌어서 순서 바꾸기">⠿</span>' +
+          '<span class="pgno"></span>' +
+          '<span style="flex:1;font-size:12.5px;color:var(--muted)">HTML 블록</span>' +
+          '<button class="mini" data-addafter="' + bk.id + '" data-tip="바로 아래에 대사·이미지·구분선·페이지 나누기를 추가합니다">＋</button>' +
+          '<button class="mini" data-dup="' + bk.id + '" title="복제">⧉</button>' +
+          '<button class="mini danger" data-del="' + bk.id + '" title="삭제">✕</button>' +
+        '</div>' +
+        '<textarea data-hx="' + bk.id + '" spellcheck="false" placeholder="&lt;div style=&quot;text-align:center;color:#8A887F&quot;&gt;― 1화 ―&lt;/div&gt;">' + escHtml(bk.html || '') + '</textarea>' +
+        '<p class="hint" style="margin:6px 12px 10px">적은 HTML이 판에 그대로 그려집니다. 꾸밈은 <code>style="..."</code> 속성으로. 스크립트와 &lt;style&gt; 태그는 빠집니다.</p>';
       list.appendChild(el);
       return;
     }
@@ -3332,7 +3386,7 @@ function renderBlocks(){
           '<button data-fmt="' + bk.id + '" data-a="&quot;" data-b="&quot;" title="큰따옴표">" "</button>' +
           '<button data-strip="' + bk.id + '" title="굵게·형광·글자색·기울임만 지웁니다. 행동 지문 기호는 남습니다. 선택한 곳이 없으면 블록 전체">서식 지우기</button>' +
         '</div>' +
-        '<textarea data-tx="' + bk.id + '" placeholder="대사를 입력하세요">' + escHtml(bk.text || '') + '</textarea>' +
+        '<div class="ed" contenteditable="true" spellcheck="false" data-tx="' + bk.id + '" data-ph="대사를 입력하세요">' + edHtml(bk) + '</div>' +
         '<div class="blk-foot">' +
           '<span class="left">' +
           '<select class="alignsel" data-al="' + bk.id + '" title="이 블록의 텍스트 정렬">' +
@@ -3648,7 +3702,13 @@ $('#castList').addEventListener('change', e => {
   if (el.dataset.nr === 'box'){ snapshot(); state.narrator.noBubble = !el.checked; renderCanvas(); return; }
   if (el.dataset.xon){
     const sp = speakerOf(el.dataset.xon);
-    if (sp){ snapshot(); sp.extraOn = el.checked; renderCast(); renderCanvas(); }
+    /* 카드를 다시 그리지 않고 칸만 열고 닫는다 — 다시 그리면 편집기가 맨 위로 튄다 */
+    if (sp){
+      snapshot(); sp.extraOn = el.checked;
+      const box = el.closest('.card').querySelector('[data-xbox]');
+      if (box) box.hidden = !el.checked;
+      renderCanvas();
+    }
     return;
   }
   if (el.dataset.avsh){
@@ -3744,9 +3804,18 @@ $('#blockList').addEventListener('input', e => {
     return;
   }
   const el = e.target;
-  if (el.dataset.tx){
+  if (el.dataset.hx){
+    const b = state.blocks.find(x => x.id === el.dataset.hx);
+    if (b){ snapshotSoon(); b.html = el.value; autosize(el); renderCanvas(); }
+  } else if (el.dataset.tx){
     const b = state.blocks.find(x => x.id === el.dataset.tx);
-    if (b){ snapshotSoon(); b.text = el.value; autosize(el); renderCanvas(); }
+    if (b){
+      /* 한 번에 이어 친 글은 되돌리기 한 번으로 — 치기 시작할 때의 상태를 남긴다 */
+      if (!el._burst) snapshot();
+      clearTimeout(el._burstT); el._burst = 1; el._burstT = setTimeout(() => { el._burst = 0; }, 900);
+      b.text = modelToMarkup(domModel(el, true));
+      renderCanvas();
+    }
   } else if (el.dataset.rw || el.dataset.rt || el.dataset.rz){
     const id = el.dataset.rw || el.dataset.rt || el.dataset.rz;
     const b = state.blocks.find(x => x.id === id);
@@ -3922,32 +3991,7 @@ function openInkPop(btn, id){
     });
 }
 /* 글자색: {{#D9534F:텍스트}} — 지문 안에서도 쓸 수 있다. 이미 칠한 곳을 다시 누르면 벗긴다 */
-function toggleInk(id, color){
-  const ta = $('[data-tx="' + id + '"]');
-  const bk = state.blocks.find(x => x.id === id);
-  if (!ta || !bk) return;
-  const s0 = ta.selectionStart, e0 = ta.selectionEnd, v = ta.value;
-  if (s0 === e0){ toast('먼저 색을 바꿀 글자를 선택하세요'); ta.focus(); return; }
-  const sel = v.slice(s0, e0);
-  let next, ns, ne;
-  const inside = /^\{\{#[0-9a-fA-F]{3,8}:([\s\S]*)\}\}$/.exec(sel);
-  const before = /\{\{#[0-9a-fA-F]{3,8}:$/.exec(v.slice(0, s0));
-  if (inside){
-    next = v.slice(0, s0) + inside[1] + v.slice(e0);
-    ns = s0; ne = s0 + inside[1].length;
-  } else if (before && v.slice(e0, e0 + 2) === '}}'){
-    next = v.slice(0, s0 - before[0].length) + sel + v.slice(e0 + 2);
-    ns = s0 - before[0].length; ne = ns + sel.length;
-  } else {
-    const tag = '{{' + color + ':';
-    next = v.slice(0, s0) + tag + sel + '}}' + v.slice(e0);
-    ns = s0 + tag.length; ne = ns + sel.length;
-  }
-  snapshot();
-  bk.text = next; ta.value = next; autosize(ta); renderCanvas();
-  ta.focus(); ta.setSelectionRange(ns, ne);
-}
-const SIZE_STEPS = [['80','작게'],['120','크게'],['150','더 크게'],['200','아주 크게']];
+function toggleInk(id, color){ edToggle(id, 'k', color, '먼저 색을 바꿀 글자를 선택하세요'); }const SIZE_STEPS = [['80','작게'],['120','크게'],['150','더 크게'],['200','아주 크게']];
 function openSizePop(btn, id){
   openPop(btn,
     '<div class="r"><label>선택한 글자를 이 크기로</label></div>' +
@@ -3961,21 +4005,7 @@ function openSizePop(btn, id){
     });
 }
 /* 글자 크기: [[130:텍스트]] */
-function applySize(id, pct){
-  const ta = $('[data-tx="' + id + '"]');
-  const bk = state.blocks.find(x => x.id === id);
-  if (!ta || !bk) return;
-  const s0 = ta.selectionStart, e0 = ta.selectionEnd, v = ta.value;
-  if (s0 === e0){ toast('먼저 크기를 바꿀 부분을 선택하세요'); ta.focus(); return; }
-  const sel = v.slice(s0, e0);
-  const inside = /^\[\[\d{2,3}:([\s\S]*)\]\]$/.exec(sel);
-  snapshot();
-  const next = inside ? inside[1] : '[[' + pct + ':' + sel + ']]';
-  const out = v.slice(0, s0) + next + v.slice(e0);
-  bk.text = out; ta.value = out; autosize(ta); renderCanvas();
-  ta.focus(); ta.setSelectionRange(s0, s0 + next.length);
-}
-
+function applySize(id, pct){ edToggle(id, 's', String(pct), '먼저 크기를 바꿀 부분을 선택하세요'); }
 /* 블록 바로 뒤에 새 블록 끼워 넣기 */
 let addMenuEl = null;
 function closeAddMenu(){ if (addMenuEl){ addMenuEl.remove(); addMenuEl = null; } }
@@ -3987,10 +4017,11 @@ function insertAfter(id, type){
   const nb = type === 'line'
     ? {id:uid(), type:'line', sp:(src.type === 'line' ? src.sp : null) || null, text:''}
     : type === 'img' ? {id:uid(), type:'img', image:null, imgShape:'round', imgAlign:'center', imgSize:100, imgOpacity:100}
-    : type === 'rule' ? {id:uid(), type:'rule'} : {id:uid(), type:'pb'};
+    : type === 'rule' ? {id:uid(), type:'rule'}
+    : type === 'html' ? {id:uid(), type:'html', html:''} : {id:uid(), type:'pb'};
   state.blocks.splice(i + 1, 0, nb);
   renderBlocks(); renderCanvas();
-  const focusSel = type === 'line' ? '[data-tx="' + nb.id + '"]' : '';
+  const focusSel = type === 'line' ? '[data-tx="' + nb.id + '"]' : type === 'html' ? '[data-hx="' + nb.id + '"]' : '';
   if (focusSel){
     const el = $(focusSel);
     if (el){ el.focus(); el.scrollIntoView({block:'center', behavior:'smooth'}); }
@@ -4004,7 +4035,8 @@ function openAddMenu(btn, id){
     '<button data-am="line">＋ 대사</button>' +
     '<button data-am="img">＋ 이미지</button>' +
     '<button data-am="rule">＋ 구분선</button>' +
-    '<button data-am="pb">＋ 페이지 나누기</button>';
+    '<button data-am="pb">＋ 페이지 나누기</button>' +
+    '<button data-am="html">＋ HTML</button>';
   document.body.appendChild(m);
   const r = btn.getBoundingClientRect();
   const mr = m.getBoundingClientRect();
@@ -4462,89 +4494,279 @@ function readImage(file, cb){
   r.onload = ev => cb(ev.target.result);
   r.readAsDataURL(file);
 }
-/* 같은 버튼을 다시 누르면 기호를 걷어낸다 */
-function applyFormat(id, a, b){
-  const ta = $('[data-tx="' + id + '"]');
-  const bk = state.blocks.find(x => x.id === id);
-  if (!ta || !bk) return;
-  const s0 = ta.selectionStart, e0 = ta.selectionEnd, v = ta.value;
-  if (s0 === e0){ toast('먼저 감쌀 부분을 선택하세요'); ta.focus(); return; }
-  const sel = v.slice(s0, e0);
-  let next, ns, ne;
-  if (s0 >= a.length && v.slice(s0 - a.length, s0) === a && v.slice(e0, e0 + b.length) === b){
-    next = v.slice(0, s0 - a.length) + sel + v.slice(e0 + b.length);
-    ns = s0 - a.length; ne = ns + sel.length;
-  } else if (sel.length >= a.length + b.length && sel.slice(0, a.length) === a && sel.slice(sel.length - b.length) === b){
-    const inner = sel.slice(a.length, sel.length - b.length);
-    next = v.slice(0, s0) + inner + v.slice(e0);
-    ns = s0; ne = s0 + inner.length;
-  } else {
-    next = v.slice(0, s0) + a + sel + b + v.slice(e0);
-    ns = s0 + a.length; ne = ns + sel.length;
-  }
-  snapshot();
-  bk.text = next; ta.value = next; autosize(ta); renderCanvas();
-  ta.focus(); ta.setSelectionRange(ns, ne);
+/* ---------------- 서식이 보이는 편집기 ----------------
+   편집 칸은 서식(굵게·기울임·형광·글자색·크기)을 기호 대신 모양으로 보여 준다.
+   저장은 예전과 같은 기호 글(**, ==, {{ }}, [[ ]], _)이라 작업 파일·프리셋이 그대로 맞는다.
+   글자마다 서식을 들고 있는 목록(모델)을 가운데 두고 [기호 글 ⇄ 모델 ⇄ 편집 칸]을 오간다.
+   기호 글로 적을 때는 지문·대사 기호(*( )*, * *, 직접 규칙 등)에 서식이 걸치지 않게 그 자리에서 끊는다. */
+const FMT_ONLY = {parenStar:false, star:false, paren:false, quote:false, custom:false, rules:[]};
+const FMT_KEYS = ['s', 'k', 'm', 'b', 'i'];
+function markupToModel(text){
+  const out = [];
+  const walk = (nodes, a) => nodes.forEach(n => {
+    if (n.type === 'text'){ for (const ch of n.text) out.push(Object.assign({c: ch}, a)); return; }
+    const na = Object.assign({}, a);
+    if (n.type === 'bold') na.b = 1;
+    else if (n.type === 'italic') na.i = 1;
+    else if (n.type === 'mark') na.m = n.color || 'default';
+    else if (n.type === 'ink') na.k = n.color;
+    else if (n.type === 'size') na.s = String(n.color || 100);
+    walk(n.kids || [], na);
+  });
+  String(text ?? '').split('\n').forEach((line, li) => {
+    if (li) out.push({c: '\n'});
+    walk(parseInline(line, FMT_ONLY, false), {});
+  });
+  return out;
 }
-/* 형광펜은 색을 함께 적는다: ==#FFD86B:텍스트== (투명도는 뒤 두 자리 #FFD86B80) */
+/* 실제 규칙으로 읽었을 때 지문·대사 기호가 놓이는 글자 자리 */
+function markerSpots(plain){
+  const spots = new Set();
+  const marks = state.marks || MARK_DEFAULTS();
+  const mark = (a, b) => { for (let x = a; x < b; x++) spots.add(x); };
+  const walk = (nodes, off) => nodes.forEach(n => {
+    if (n.type === 'text'){ off += n.text.length; return; }
+    const len = n.raw.length;
+    if (n.type === 'action' || n.type === 'quote'){
+      let ol = 1, cl = 1;
+      if (n.open != null){ ol = n.open.length; cl = n.close.length; }
+      else if (n.type === 'action' && n.raw.startsWith('*(') && n.raw.endsWith(')*')){ ol = 2; cl = 2; }
+      mark(off, off + ol); mark(off + len - cl, off + len);
+      walk(n.kids || [], off + ol);
+    } else mark(off, off + len); /* 직접 적어 넣은 서식 기호는 손대지 않고 그대로 둔다 */
+    off += len;
+  });
+  let base = 0;
+  plain.split('\n').forEach(line => { walk(parseInline(line, marks, true), base); base += line.length + 1; });
+  return spots;
+}
+/* 감싸는 기호와 부딪히는 글자 — 그 글자만 서식 밖으로 뺀다 */
+const FMT_BAD = {s: ']', k: '}', m: '=', b: '*', i: '_'};
+/* 서식을 바깥에서 안으로 감싸 나간다. 한 번에 길게 이어지는 서식을 바깥에 두어 기호가 덜 쪼개지게 한다 */
+function fmtNest(seg, keys, leaf, wrap){
+  if (!keys.length) return leaf(seg);
+  const span = k => {
+    let n = 0, len = 0;
+    for (let i = 0; i < seg.length; i++){
+      if (!seg[i][k]) continue;
+      len++;
+      if (!i || seg[i][k] !== seg[i - 1][k]) n++;
+    }
+    return n ? len / n : 0;
+  };
+  const key = keys.reduce((best, k) => span(k) > span(best) ? k : best, keys[0]);
+  const rest = keys.filter(k => k !== key);
+  let out = '', i = 0;
+  while (i < seg.length){
+    let j = i;
+    while (j < seg.length && (seg[j][key] || null) === (seg[i][key] || null)) j++;
+    const inner = fmtNest(seg.slice(i, j), rest, leaf, wrap);
+    const v = seg[i][key];
+    out += v && inner ? wrap(key, v, inner) : inner;
+    i = j;
+  }
+  return out;
+}
+function modelToMarkup(model){
+  const plain = model.map(x => x.c).join('');
+  const spots = markerSpots(plain);
+  const bare = (x, idx) => x.c === '\n' || spots.has(idx) || FMT_KEYS.some(k => x[k] && x.c === FMT_BAD[k]);
+  const items = model.map((x, idx) => bare(x, idx) ? {c: x.c} : x);
+  return fmtNest(items, FMT_KEYS, seg => seg.map(x => x.c).join(''), (key, v, inner) =>
+    key === 's' ? '[[' + v + ':' + inner + ']]'
+    : key === 'k' ? '{{' + v + ':' + inner + '}}'
+    : key === 'm' ? '==' + (v === 'default' ? '' : v + ':') + inner + '=='
+    : key === 'b' ? '**' + inner + '**' : '_' + inner + '_');
+}
+function modelToHtml(model){
+  const html = fmtNest(model, FMT_KEYS, seg => seg.map(x => x.c === '\n' ? '<br>' : escHtml(x.c)).join(''), (key, v, inner) =>
+    key === 's' ? '<span data-s="' + escAttr(v) + '" style="font-size:' + clamp(Number(v) || 100, 50, 300) + '%">' + inner + '</span>'
+    : key === 'k' ? '<span data-k="' + escAttr(v) + '" style="color:' + markBgOf(v) + '">' + inner + '</span>'
+    : key === 'm' ? '<mark data-m="' + escAttr(v) + '" style="background:' +
+        markBgOf(v === 'default' ? (state.markColor || '#FDE68A') : v) + '">' + inner + '</mark>'
+    : key === 'b' ? '<b>' + inner + '</b>' : '<i>' + inner + '</i>');
+  /* 끝이 줄바꿈이면 커서가 설 빈 줄 하나를 덧붙인다 */
+  return model.length && model[model.length - 1].c === '\n' ? html + '<br>' : html;
+}
+const ED_BLOCK = /^(DIV|P|LI|H[1-6]|BLOCKQUOTE)$/;
+function domModel(root, trim){
+  const out = [];
+  let lastLeaf = null;
+  const walk = (node, a) => {
+    if (node.nodeType === 3){
+      for (const ch of node.nodeValue) out.push(Object.assign({c: ch === '\r' ? '\n' : ch}, a));
+      if (node.nodeValue) lastLeaf = node;
+      return;
+    }
+    if (node.nodeType !== 1 && node.nodeType !== 11) return;
+    if (node.nodeName === 'BR'){ out.push({c: '\n'}); lastLeaf = node; return; }
+    const na = Object.assign({}, a);
+    if (node.nodeType === 1){
+      const t = node.nodeName, d = node.dataset || {};
+      if (t === 'B' || t === 'STRONG') na.b = 1;
+      if (t === 'I' || t === 'EM') na.i = 1;
+      if (d.m) na.m = d.m; else if (t === 'MARK') na.m = 'default';
+      if (d.k) na.k = d.k;
+      if (d.s) na.s = d.s;
+      /* 브라우저가 줄을 <div>로 나눠 넣는 경우 */
+      if (ED_BLOCK.test(t) && node !== root && out.length && out[out.length - 1].c !== '\n') out.push({c: '\n'});
+    }
+    node.childNodes.forEach(ch => walk(ch, na));
+  };
+  walk(root, {});
+  if (trim && lastLeaf && lastLeaf.nodeName === 'BR' && out.length && out[out.length - 1].c === '\n') out.pop();
+  return out;
+}
+function edOffset(ed, node, off){
+  const r = document.createRange();
+  r.selectNodeContents(ed);
+  try { r.setEnd(node, off); } catch(e){ return 0; }
+  return domModel(r.cloneContents(), false).length;
+}
+function edGetSel(ed){
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return null;
+  const r = sel.getRangeAt(0);
+  if (!ed.contains(r.startContainer) || !ed.contains(r.endContainer)) return null;
+  return [edOffset(ed, r.startContainer, r.startOffset), edOffset(ed, r.endContainer, r.endOffset)];
+}
+function edPoint(ed, n){
+  let left = n, found = null;
+  const walk = node => {
+    if (found) return;
+    if (node.nodeType === 3){
+      const L = node.nodeValue.length;
+      if (left <= L){ found = [node, left]; return; }
+      left -= L; return;
+    }
+    if (node.nodeName === 'BR'){
+      const i = Array.prototype.indexOf.call(node.parentNode.childNodes, node);
+      if (left === 0){ found = [node.parentNode, i]; return; }
+      left -= 1;
+      if (left === 0 && !node.nextSibling){ found = [node.parentNode, i + 1]; }
+      return;
+    }
+    node.childNodes.forEach(walk);
+  };
+  ed.childNodes.forEach(walk);
+  return found || [ed, ed.childNodes.length];
+}
+function edSetSel(ed, s, e){
+  const sel = window.getSelection();
+  if (!sel) return;
+  const r = document.createRange();
+  const a = edPoint(ed, s), b = edPoint(ed, e);
+  try { r.setStart(a[0], a[1]); r.setEnd(b[0], b[1]); } catch(err){ return; }
+  sel.removeAllRanges(); sel.addRange(r);
+  ed._sel = [s, e];
+}
+function edHtml(bk){ return modelToHtml(markupToModel(bk.text || '')); }
+/* 서식 버튼을 누르면 편집 칸의 선택이 풀릴 수 있어 마지막 선택을 붙잡아 둔다 */
+document.addEventListener('selectionchange', () => {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+  const n = sel.getRangeAt(0).startContainer;
+  const ed = n && (n.nodeType === 1 ? n : n.parentElement);
+  const host = ed && ed.closest && ed.closest('.ed');
+  if (host){ const v = edGetSel(host); if (v) host._sel = v; }
+});
+function edCtx(id){
+  const ed = $('[data-tx="' + id + '"]');
+  const bk = state.blocks.find(x => x.id === id);
+  if (!ed || !bk) return null;
+  const live = document.activeElement === ed ? edGetSel(ed) : null;
+  const [s, e] = live || ed._sel || [0, 0];
+  return {ed, bk, model: domModel(ed, true), s: Math.min(s, e), e: Math.max(s, e)};
+}
+function edCommit(cx, model, s, e){
+  snapshot();
+  cx.bk.text = modelToMarkup(model);
+  cx.ed.innerHTML = edHtml(cx.bk);
+  cx.ed.focus();
+  edSetSel(cx.ed, s, e);
+  renderCanvas();
+}
+/* 선택한 글자 모두가 이미 그 서식이면 벗기고, 아니면 입힌다 */
+function edToggle(id, key, val, emptyMsg){
+  const cx = edCtx(id);
+  if (!cx) return;
+  if (cx.s === cx.e){ toast(emptyMsg); cx.ed.focus(); return; }
+  const part = cx.model.slice(cx.s, cx.e).filter(x => x.c !== '\n');
+  const all = part.length && part.every(x => key === 'm' || key === 'k' || key === 's' ? !!x[key] : x[key] === val);
+  cx.model.slice(cx.s, cx.e).forEach(x => { if (x.c === '\n') return; if (all) delete x[key]; else x[key] = val; });
+  edCommit(cx, cx.model, cx.s, cx.e);
+}
+/* 지문·따옴표 버튼 — 서식이 아니라 기호 글자를 앞뒤에 넣는다. 이미 감싸여 있으면 걷어낸다 */
+function applyFormat(id, a, b){
+  if (a === '**') return edToggle(id, 'b', 1, '먼저 굵게 할 부분을 선택하세요');
+  if (a === '_') return edToggle(id, 'i', 1, '먼저 기울일 부분을 선택하세요');
+  const cx = edCtx(id);
+  if (!cx) return;
+  const {model, s, e} = cx;
+  if (s === e){ toast('먼저 감쌀 부분을 선택하세요'); cx.ed.focus(); return; }
+  const txt = (i, j) => model.slice(Math.max(0, i), j).map(x => x.c).join('');
+  const chars = t => Array.from(t).map(c => ({c}));
+  let next, ns, ne;
+  if (s >= a.length && txt(s - a.length, s) === a && txt(e, e + b.length) === b){
+    next = model.slice(0, s - a.length).concat(model.slice(s, e), model.slice(e + b.length));
+    ns = s - a.length; ne = e - a.length;
+  } else if (e - s >= a.length + b.length && txt(s, s + a.length) === a && txt(e - b.length, e) === b){
+    next = model.slice(0, s).concat(model.slice(s + a.length, e - b.length), model.slice(e));
+    ns = s; ne = e - a.length - b.length;
+  } else {
+    next = model.slice(0, s).concat(chars(a), model.slice(s, e), chars(b), model.slice(e));
+    ns = s + a.length; ne = e + a.length;
+  }
+  edCommit(cx, next, ns, ne);
+}/* 형광펜은 색을 함께 적는다: ==#FFD86B:텍스트== (투명도는 뒤 두 자리 #FFD86B80) */
 function withAlpha(hex, op){
   const a = clamp(100 - (Number(op) || 0), 0, 100);
   if (a >= 100) return hex;
   const v = Math.round(a * 255 / 100).toString(16).padStart(2, '0');
   return (hex || '#FDE68A') + v;
 }
-function toggleMark(id, color){
-  const ta = $('[data-tx="' + id + '"]');
-  const bk = state.blocks.find(x => x.id === id);
-  if (!ta || !bk) return;
-  const s0 = ta.selectionStart, e0 = ta.selectionEnd, v = ta.value;
-  if (s0 === e0){ toast('먼저 칠할 부분을 선택하세요'); ta.focus(); return; }
-  const sel = v.slice(s0, e0);
-  let next, ns, ne;
-  const inside = /^==(?:#[0-9a-fA-F]{3,8}:)?([\s\S]*)==$/.exec(sel);
-  const before = /==(?:#[0-9a-fA-F]{3,8}:)?$/.exec(v.slice(0, s0));
-  if (inside){
-    next = v.slice(0, s0) + inside[1] + v.slice(e0);
-    ns = s0; ne = s0 + inside[1].length;
-  } else if (before && v.slice(e0, e0 + 2) === '=='){
-    next = v.slice(0, s0 - before[0].length) + sel + v.slice(e0 + 2);
-    ns = s0 - before[0].length; ne = ns + sel.length;
-  } else {
-    const tag = '==' + color + ':';
-    next = v.slice(0, s0) + tag + sel + '==' + v.slice(e0);
-    ns = s0 + tag.length; ne = ns + sel.length;
-  }
-  snapshot();
-  bk.text = next; ta.value = next; autosize(ta); renderCanvas();
-  ta.focus(); ta.setSelectionRange(ns, ne);
-}
-
+function toggleMark(id, color){ edToggle(id, 'm', color, '먼저 칠할 부분을 선택하세요'); }
 /* 선택한 곳(없으면 블록 전체)의 서식 기호를 모두 없앤다 */
 function stripFormat(id){
-  const ta = $('[data-tx="' + id + '"]');
-  const bk = state.blocks.find(x => x.id === id);
-  if (!ta || !bk) return;
-  const whole = ta.selectionStart === ta.selectionEnd;
-  const s0 = whole ? 0 : ta.selectionStart;
-  const e0 = whole ? ta.value.length : ta.selectionEnd;
-  const v = ta.value;
-  /* 굵게·형광·글자색·기울임·크기만 걷는다. 행동 지문 기호(*내용*, *(내용)*)는 내용의 일부라 그대로 둔다. */
-  const cleaned = v.slice(s0, e0)
-    .replace(/\*\*([^*\n]*?)\*\*/g, '$1')
-    .replace(/==(?:#[0-9a-fA-F]{3,8}:)?([^=\n]*?)==/g, '$1')
-    .replace(/\[\[\d{2,3}:([^\]\n]*?)\]\]/g, '$1')
-    .replace(/\{\{#[0-9a-fA-F]{3,8}:([^}\n]*?)\}\}/g, '$1')
-    .replace(/_([^_\n]*?)_/g, '$1');
-  if (cleaned === v.slice(s0, e0)){ toast('지울 서식이 없습니다'); return; }
-  snapshot();
-  const next = v.slice(0, s0) + cleaned + v.slice(e0);
-  bk.text = next; ta.value = next; autosize(ta); renderCanvas();
-  ta.focus(); ta.setSelectionRange(s0, s0 + cleaned.length);
+  const cx = edCtx(id);
+  if (!cx) return;
+  const whole = cx.s === cx.e;
+  const s0 = whole ? 0 : cx.s, e0 = whole ? cx.model.length : cx.e;
+  const part = cx.model.slice(s0, e0);
+  if (!part.some(x => FMT_KEYS.some(k => x[k]))){ toast('지울 서식이 없습니다'); return; }
+  part.forEach(x => FMT_KEYS.forEach(k => { delete x[k]; }));
+  edCommit(cx, cx.model, s0, e0);
   if (whole) toast('블록 전체의 서식을 지웠습니다');
+}/* 편집 칸에 줄바꿈·붙여넣기를 직접 넣는다 — 브라우저마다 <div>·서식째 넣는 방식이 달라서 */
+function edInsertText(ed, text){
+  const id = ed.dataset.tx;
+  const cx = edCtx(id);
+  if (!cx) return;
+  const t = String(text).replace(/\r\n?/g, '\n');
+  const ins = Array.from(t).map(c => ({c}));
+  /* 이어 치는 글은 바로 앞 글자의 서식을 따른다 (줄바꿈 제외) */
+  const prev = cx.s > 0 ? cx.model[cx.s - 1] : null;
+  if (prev && prev.c !== '\n') ins.forEach(x => { if (x.c !== '\n') FMT_KEYS.forEach(k => { if (prev[k]) x[k] = prev[k]; }); });
+  const next = cx.model.slice(0, cx.s).concat(ins, cx.model.slice(cx.e));
+  edCommit(cx, next, cx.s + ins.length, cx.s + ins.length);
 }
+$('#blockList').addEventListener('mousedown', e => {
+  if (e.target.closest && e.target.closest('.fmt button')) e.preventDefault();
+});
+$('#blockList').addEventListener('paste', e => {
+  const ed = e.target.closest && e.target.closest('.ed');
+  if (!ed) return;
+  e.preventDefault();
+  const t = (e.clipboardData || window.clipboardData).getData('text/plain') || '';
+  if (t) edInsertText(ed, t);
+});
+$('#blockList').addEventListener('drop', e => { if (e.target.closest && e.target.closest('.ed')) e.preventDefault(); });
 $('#blockList').addEventListener('keydown', e => {
   if (!e.target.dataset.tx) return;
   const id = e.target.dataset.tx;
+  if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.isComposing && e.keyCode !== 229){
+    e.preventDefault(); edInsertText(e.target, '\n'); return;
+  }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b'){ e.preventDefault(); applyFormat(id, '**', '**'); }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i'){ e.preventDefault(); applyFormat(id, '_', '_'); }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h'){
@@ -4580,6 +4802,14 @@ $('#btnAddImg').addEventListener('click', () => {
   renderBlocks(); renderCanvas();
   const el = $('#blockList .blk:last-child .filebtn');
   if (el) el.scrollIntoView({block:'center', behavior:'smooth'});
+});
+$('#btnAddHtml').addEventListener('click', () => {
+  snapshot();
+  const nb = {id:uid(), type:'html', html:''};
+  state.blocks.push(nb);
+  renderBlocks(); renderCanvas();
+  const ta = $('[data-hx="' + nb.id + '"]');
+  if (ta){ ta.focus(); ta.scrollIntoView({block:'center'}); }
 });
 $('#btnAddBreak').addEventListener('click', () => {
   snapshot();
