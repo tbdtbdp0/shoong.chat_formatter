@@ -496,6 +496,14 @@ body.ui-mobile .grid3.xcolor{grid-template-columns:repeat(3,minmax(0,1fr))}
 .inline-name{font-weight:700;margin-right:.45em}
 .aligned.mode-line .crow.right,.aligned.mode-quote .crow.right{text-align:right}
 .aligned.mode-line .crow.center,.aligned.mode-quote .crow.center{text-align:center}
+/* 좌우 배치는 문단에도 직접 건다 — 텍스트 정렬(양쪽·가운데·오른쪽)이 문단마다 걸려 있어 줄 단위 설정을 덮어썼다 */
+.aligned.mode-line .crow.right .p,.aligned.mode-quote .crow.right .p{text-align:right}
+.aligned.mode-line .crow.center .p,.aligned.mode-quote .crow.center .p{text-align:center}
+/* 블록별 정렬(대사 탭)은 그보다 먼저다. 나레이션 줄은 나레이션 설정이 따로 있어 건드리지 않는다 */
+.page .cbody .crow:not(.narr)[style*="text-align: left"] .p{text-align:left}
+.page .cbody .crow:not(.narr)[style*="text-align: center"] .p{text-align:center}
+.page .cbody .crow:not(.narr)[style*="text-align: right"] .p{text-align:right}
+.page .cbody .crow:not(.narr)[style*="text-align: justify"] .p{text-align:justify}
 .mode-line .bubble .p,.mode-quote .bubble .p{line-height:calc(var(--c-lh) + .12)}
 /* 인용구 — 장식은 대사 묶음에만 붙는다 */
 .mode-quote .stack{display:flex;flex-direction:column;gap:.5em}
