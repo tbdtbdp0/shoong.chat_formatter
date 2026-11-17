@@ -256,23 +256,44 @@ let snapTimer = null, pastSize = 0;
 const HISTORY_MAX = 40, HISTORY_BYTES = 24e6;
 function snapshot(){
   const snap = JSON.stringify(state);
+  /* 새로 고치기 시작하면 '다시 실행'할 거리는 사라진다 */
+  future.length = 0; $('#btnRedo').disabled = true;
+  /* 바로 앞 기록과 똑같으면 또 쌓지 않는다 — 되돌리기를 눌러도 아무 일 없는 빈 단계가 생기지 않게 */
+  if (past.length && past[past.length - 1] === snap) return;
   past.push(snap); pastSize += snap.length;
   /* 사진이 붙은 상태는 한 벌만 해도 수 MB다. 개수와 총량 둘 다로 끊는다 */
   while (past.length > HISTORY_MAX || (past.length > 1 && pastSize > HISTORY_BYTES))
     pastSize -= past.shift().length;
   $('#btnUndo').disabled = false;
-  /* 새로 고치기 시작하면 '다시 실행'할 거리는 사라진다 */
-  future.length = 0; $('#btnRedo').disabled = true;
 }
-function snapshotSoon(){ clearTimeout(snapTimer); snapTimer = setTimeout(snapshot, 700); }
+/* 슬라이더를 끌거나 글자를 이어 치는 동안은 한 묶음 — 묶음이 시작될 때(값이 바뀌기 전)의 상태를 한 번만 남긴다.
+   예전에는 0.7초 뒤에 남겨서, 이미 바뀐 뒤의 상태가 기록되어 되돌리기가 한 번 헛돌고 직전 단계가 사라졌다.
+   key 를 주면 칸마다 묶음을 따로 센다(다른 칸을 만지면 새 묶음). key 없이 부르면 진행 중인 묶음을 잇는다. */
+let snapBurst = null;
+function snapshotSoon(key){
+  if (snapBurst == null || (key && snapBurst !== key)){
+    snapshot();
+    snapBurst = key || 'any';
+  }
+  clearTimeout(snapTimer);
+  snapTimer = setTimeout(() => { snapBurst = null; }, 700);
+}
+function endSnapBurst(){ clearTimeout(snapTimer); snapBurst = null; }
 /* 다시 실행 — 되돌릴 때 지금 상태를 future에 쌓아 두었다가 꺼낸다 */
 const future = [];
 function undo(){
-  clearTimeout(snapTimer);
+  endSnapBurst();
   if (!past.length) return;
-  const snap = past.pop();
-  pastSize -= snap.length;
-  future.push(JSON.stringify(state));
+  const cur = JSON.stringify(state);
+  /* 지금과 똑같은 기록(바꾸려다 만 것)은 건너뛴다 */
+  let snap = null;
+  while (past.length){
+    const s = past.pop();
+    pastSize -= s.length;
+    if (s !== cur){ snap = s; break; }
+  }
+  if (snap == null){ $('#btnUndo').disabled = true; return; }
+  future.push(cur);
   state = JSON.parse(snap);
   $('#btnUndo').disabled = !past.length;
   $('#btnRedo').disabled = false;
@@ -280,7 +301,7 @@ function undo(){
   toast('되돌렸습니다');
 }
 function redo(){
-  clearTimeout(snapTimer);
+  endSnapBurst();
   if (!future.length) return;
   const cur = JSON.stringify(state);
   past.push(cur); pastSize += cur.length;
@@ -831,11 +852,13 @@ function closeHtmlEdit(apply){
   htmlEditId = null;
   $('#htmlVeil').classList.remove('on');
 }
-function safeHtml(src){
+function safeHtml(src, decor){
   const doc = new DOMParser().parseFromString('<div>' + String(src) + '</div>', 'text/html');
   const root = doc.body.firstElementChild;
   if (!root) return '';
-  root.querySelectorAll('script,style,link,meta,base,iframe,frame,frameset,object,embed,form,input,button,textarea,select,noscript,template').forEach(n => n.remove());
+  /* decor: 직접 만든 테두리 — 예전부터 <style> 과 버튼 모양 요소를 쓸 수 있었으므로 그것들은 남긴다 */
+  root.querySelectorAll('script,link,meta,base,iframe,frame,frameset,object,embed,form,noscript,template' +
+    (decor ? '' : ',style,input,button,textarea,select')).forEach(n => n.remove());
   root.querySelectorAll('*').forEach(el => {
     Array.from(el.attributes).forEach(a => {
       const n = a.name.toLowerCase(), v = a.value.replace(/[\s\u0000-\u001F]/g, '').toLowerCase();
@@ -1115,6 +1138,7 @@ function elOn(key){
 const BARCODE = '31213112331211321213311231122313'.split('')
   .map(n => '<i style="width:' + n + 'px"></i>').join('');
 
+let frameHtmlCache = {src: null, html: ''};
 function frameParts(){
   const f = state.frame;
   if (!f || f === 'none') return null;
@@ -1127,7 +1151,12 @@ function frameParts(){
   const v = fvar();
 
   if (f === 'custom'){
-    const html = String(state.frameHtml || '').replace(/<script[\s\S]*?<\/script>/gi, '');
+    /* 스타일·작업 파일로 남의 HTML 이 들어올 수 있다 — <script> 만 지우던 것을 HTML 블록과 같은 거름망으로 바꾼다.
+       (이벤트 속성·javascript: 주소까지 걷는다. 꾸밈에 쓰이는 <style>·버튼 모양 요소는 남긴다)
+       장마다 불리므로 같은 글이면 걸러 둔 것을 다시 쓴다. */
+    const src = String(state.frameHtml || '');
+    if (frameHtmlCache.src !== src) frameHtmlCache = {src, html: safeHtml(src, true)};
+    const html = frameHtmlCache.html;
     if (!html.trim()) return null;
     const n = k => Math.max(0, Number(ftx(k, '0')) || 0);
     return {
@@ -1287,8 +1316,8 @@ function frameParts(){
     return {
       top:'<div class="fhud-t" style="color:' + c + '"><span class="hudname">' + (title || 'PLAYER') + '</span>' +
         (elOn('hp') ? '<span class="hudbars">' +
-          '<span class="hudbar"><i style="background:' + ftx('hpc', '#E24B4B') + ';width:' + hp + '%"></i></span>' +
-          '<span class="hudbar"><i style="background:' + ftx('mpc', '#3E7BFA') + ';width:' + mp + '%"></i></span>' +
+          '<span class="hudbar"><i style="background:' + escAttr(ftx('hpc', '#E24B4B')) + ';width:' + hp + '%"></i></span>' +
+          '<span class="hudbar"><i style="background:' + escAttr(ftx('mpc', '#3E7BFA')) + ';width:' + mp + '%"></i></span>' +
         '</span>' : '') + '</div>',
       bottom: elOn('keys') ? '<div class="fhud-b" style="color:' + c + '">' + T('keys', '◉ 확인　✕ 취소　▤ 메뉴') + '</div>' : '',
       overlay:'<div class="fgame" style="border-color:' + hexToRgba(c,.4) + ';color:' + c + '">' +
@@ -1625,11 +1654,18 @@ function makePage(idx){
 /* 마지막 블록의 바닥이 '높이 - 아래 여백' 선을 넘으면 가득 찬 것.
    scrollHeight 비교는 엔진에 따라 아래 여백을 무시하고 바닥까지 채워 버린다. */
 const contentRows = b => b.querySelectorAll(':scope > [data-bid]');
+/* 블록을 하나 얹을 때마다 불리므로 가볍게: 아래 여백은 칸마다 한 번만 재고(칸은 그릴 때마다 새로 만든다),
+   마지막 블록은 뒤에서부터 찾는다. */
+const padBottomOf = new WeakMap();
 function overBottom(body){
-  const rs = contentRows(body);
-  const last = rs[rs.length - 1];
+  let last = body.lastElementChild;
+  while (last && !last.dataset.bid) last = last.previousElementSibling;
   if (!last) return false;
-  const padB = parseFloat(getComputedStyle(body).paddingBottom) || 0;
+  let padB = padBottomOf.get(body);
+  if (padB === undefined){
+    padB = parseFloat(getComputedStyle(body).paddingBottom) || 0;
+    padBottomOf.set(body, padB);
+  }
   return last.offsetTop + last.offsetHeight > body.clientHeight - padB + 1;
 }
 /* 쪽을 통째로 덮는 삽화 — 비율이 달라 남는 자리는 그림을 키워 덮고 넘친 만큼 잘라낸다.
@@ -1939,8 +1975,14 @@ function paintPageMarkers(pageOf, total){
   if (!list) return;
   const sc = list.closest('.pane-scroll');
   const keep = sc ? sc.scrollTop : 0;
-  list.querySelectorAll('.pagemark').forEach(n => n.remove());
   const blks = Array.from(list.querySelectorAll('.blk'));
+  /* 쪽 나눔이 그대로면 목록을 건드리지 않는다. 글자 하나 칠 때마다 쪽 표시를 뗐다 붙이면
+     긴 목록 전체가 다시 배치되어, 대사가 많을수록 타자·슬라이더가 굼떠진다. */
+  const sig = total + '|' + blks.map(el => { const pg = pageOf[el.dataset.id]; return el.dataset.id + ':' + (pg === undefined ? '' : pg); }).join(',');
+  const marksNow = list.querySelectorAll('.pagemark').length;
+  if (list._pgSig === sig && blks.length === lastBlkCount && (total < 2 ? marksNow === 0 : marksNow > 0)) return;
+  list._pgSig = sig;
+  list.querySelectorAll('.pagemark').forEach(n => n.remove());
   /* 블록이 늘거나 줄면 접힘을 푼다 — 방금 더한 블록이 접힌 장에 숨는 일을 막는다 */
   if (blks.length !== lastBlkCount){ foldedPages.clear(); lastBlkCount = blks.length; }
   if (total < 2){
@@ -3681,7 +3723,11 @@ function openMarkPop(btn, id){
     '<div class="r"><label>투명도</label><input type="range" id="popMo" min="0" max="90" step="5" value="' + op + '"><b id="popMoV" style="width:34px;text-align:right;font-size:11.5px">' + op + '%</b></div>' +
     '<div class="r sizes"><button id="popMgo">선택 부분에 칠하기</button></div>',
     p => {
-      const sync = () => { renderBlocks(); };
+      /* 목록을 통째로 다시 그리면 편집 칸의 선택이 풀려 '선택 부분에 칠하기'가 먹지 않는다 — 버튼의 색 점만 바꾼다 */
+      const sync = () => {
+        const bg = markBgOf(withAlpha(state.markColor || '#FDE68A', state.markAlpha));
+        $$('[data-mark] .swatchdot').forEach(d => { d.style.background = bg; });
+      };
       p.querySelector('#popMc').addEventListener('input', e => { state.markColor = e.target.value; sync(); });
       p.querySelectorAll('[data-sw]').forEach(i => i.addEventListener('click', () => {
         state.markColor = i.dataset.sw; p.querySelector('#popMc').value = i.dataset.sw; sync();
@@ -3702,7 +3748,7 @@ function openInkPop(btn, id){
     '<div class="r swatches">' + INK_SWATCHES.map(c => '<i data-sw="' + c + '" style="background:' + c + '"></i>').join('') + '</div>' +
     '<div class="r sizes"><button id="popIgo">선택 부분에 칠하기</button></div>',
     p => {
-      const sync = () => { renderBlocks(); };
+      const sync = () => { $$('[data-ink] .swatchdot').forEach(d => { d.style.background = state.inkColor; }); };
       p.querySelector('#popIc').addEventListener('input', e => { state.inkColor = e.target.value; sync(); });
       p.querySelectorAll('[data-sw]').forEach(i => i.addEventListener('click', () => {
         state.inkColor = i.dataset.sw; p.querySelector('#popIc').value = i.dataset.sw; sync();
@@ -3752,7 +3798,7 @@ function insertAfter(id, type){
   snapshot();
   const src = state.blocks[i];
   const nb = type === 'line'
-    ? {id:uid(), type:'line', sp:(src.type === 'line' ? src.sp : null) || null, text:''}
+    ? {id:uid(), type:'line', speakerId:(src.type === 'line' ? src.speakerId : '') || '', text:'', image:null}
     : type === 'img' ? {id:uid(), type:'img', image:null, imgShape:'round', imgAlign:'center', imgSize:100, imgOpacity:100}
     : type === 'rule' ? {id:uid(), type:'rule'}
     : type === 'html' ? {id:uid(), type:'html', html:''} : {id:uid(), type:'pb'};
@@ -5557,6 +5603,7 @@ function makePreset(){
 }
 /* 프리셋은 화자와 스타일만 담는다. 대사 내용은 저장하지 않는다. */
 function applyPreset(pre){
+  scrubLoaded(pre);
   const st = Object.assign({}, pre.style || {});
   if (st.padding !== undefined && st.padX === undefined){ st.padX = st.padding; st.padY = st.padding; }
   /* 파일에 없는 설정은 지금 값을 남기지 않고 기본값으로 — 스타일을 씌우면 그 스타일 그대로가 되게 */
@@ -5613,7 +5660,7 @@ function styleSwatch(pre){
   if (st.bgKind === 'gradient') bg = 'linear-gradient(135deg,' + (st.bgColor || '#F1F1EF') + ',' + (st.bgColor2 || '#DCE6EF') + ')';
   if (st.bgKind === 'image' && st.bgImage) bg = 'url(' + st.bgImage + ') center/cover';
   if (st.bgKind === 'none') bg = 'repeating-conic-gradient(#E6E6E6 0 25%,#fff 0 50%) 0 0/10px 10px';
-  const dots = sps.slice(0, 3).map(sp => '<i style="background:' + (sp.bubble || '#fff') + '"></i>').join('');
+  const dots = sps.slice(0, 3).map(sp => '<i style="background:' + escAttr(sp.bubble || '#fff') + '"></i>').join('');
   return '<span class="sw" style="background:' + escAttr(bg) + '">' + dots + '</span>';
 }
 function renderStyles(){
@@ -5747,7 +5794,28 @@ setTimeout(loadStyles, 0);
 /* ---------------- 작업 파일 ----------------
    대사·사진·서식 전부를 파일 하나로. 사진은 원본만 담고, 자르기·원형·흐리게를 거친 표시용은
    열 때 원본과 설정으로 다시 만든다(임시저장과 같은 방식). 그래서 화질은 그대로, 파일은 작다. */
+/* 파일에서 온 값은 화면을 만들 때 HTML 속성 자리에 그대로 들어간다(색·글꼴·id 등).
+   사용자가 직접 적는 글(대사·이름·제목·기호…)이 아닌 값에서는 속성을 깨고 나올 수 있는 글자(" < >)를 걷어낸다.
+   정상 파일의 색·글꼴·id·사진(base64)에는 이 글자가 없으므로 아무것도 바뀌지 않는다.
+   글 칸들은 그릴 때 따로 이스케이프하므로 손대지 않는다. */
+const FREE_TEXT_KEYS = new Set(['text','html','name','frameHtml','frameTitle','frameChoiceText','docTitle','docTitleEyebrow',
+  'stampText','exportName','open','close','wrapQuote','nameSep','bgPatSymbol','sym']);
+function scrubLoaded(o, free, cast){
+  if (!o || typeof o !== 'object') return o;
+  Object.keys(o).forEach(k => {
+    const v = o[k];
+    if (typeof v === 'string'){
+      /* 화자·나레이션의 text 는 대사가 아니라 글자색이다 */
+      const isFree = free || (FREE_TEXT_KEYS.has(k) && !(cast && k === 'text'));
+      if (!isFree && /["<>]/.test(v)) o[k] = v.replace(/["<>]/g, '');
+    } else if (v && typeof v === 'object'){
+      scrubLoaded(v, free || k === 'frameText', Array.isArray(o) ? cast : (k === 'speakers' || k === 'narrator'));
+    }
+  });
+  return o;
+}
 function adoptState(loaded){
+  scrubLoaded(loaded);
   state = Object.assign(DEFAULT_STATE(), loaded);
   state.marks = normMarks(loaded.marks);
   if (loaded.padding !== undefined && loaded.padX === undefined){ state.padX = loaded.padding; state.padY = loaded.padding; }
@@ -6438,8 +6506,10 @@ $('#btnUndo').addEventListener('click', undo);
 $('#btnRedo').addEventListener('click', redo);
 document.addEventListener('keydown', e => {
   const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
-  const tag = document.activeElement && document.activeElement.tagName;
-  const typing = tag === 'TEXTAREA' || tag === 'INPUT';
+  const ae = document.activeElement, tag = ae && ae.tagName;
+  /* 글자를 치는 칸에서는 브라우저의 되돌리기를 쓴다. 슬라이더·색·체크 칸은 글 칸이 아니므로 앱 되돌리기가 먹어야 한다
+     (슬라이더를 끈 직후에는 초점이 슬라이더에 남아 있어, 예전에는 Ctrl+Z 가 아무 일도 하지 않았다) */
+  const typing = tag === 'TEXTAREA' || (tag === 'INPUT' && !/^(range|color|checkbox|radio|file|button)$/.test(ae.type));
   if (mod && k === 'z' && !e.shiftKey){
     if (typing) return;
     e.preventDefault(); undo();
@@ -6452,8 +6522,25 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape'){
     $('#pasteVeil').classList.remove('on'); $('#tuneVeil').classList.remove('on');
     if ($('#htmlVeil').classList.contains('on')) closeHtmlEdit(false);
+    if ($('#cropVeil').classList.contains('on')){ $('#cropVeil').classList.remove('on'); cropTarget = null; }
+    closePop(); closeAddMenu();
   }
 });
+
+/* 슬라이더·색·글 칸은 칸마다 되돌리기 기록을 남기는 곳도, 빠뜨린 곳도 있었다
+   (글자 크기·줄 간격·여백·배경 덮개·배경색·말풍선 색·테두리 색 등은 되돌릴 수 없었다).
+   값이 바뀌기 직전(캡처 단계)에 한곳에서 남긴다. 작업 내용과 상관없는 칸을 만져 생긴 기록은 지금 상태와 같으므로
+   snapshot·undo 가 알아서 건너뛴다. 편집 칸(.ed)과 체크·선택 칸은 각자 남기므로 여기서 다루지 않는다. */
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (!el || !el.tagName || el.classList.contains('numin')) return;
+  if (el.id === 'matColor' || el.closest('#cropVeil, #htmlVeil, #pasteColors')) return;
+  const ok = el.tagName === 'TEXTAREA' ||
+    (el.tagName === 'INPUT' && /^(range|color|text|number|search|)$/.test(el.getAttribute('type') || ''));
+  if (!ok) return;
+  if (!el._snapKey) el._snapKey = uid();
+  snapshotSoon(el._snapKey);
+}, true);
 
 /* ---------------- autosave (복구용) ---------------- */
 const KEY = 'chatFormatter.v7';
